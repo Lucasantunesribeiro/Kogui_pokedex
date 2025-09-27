@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import status
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.generics import DestroyAPIView, ListAPIView, ListCreateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -56,6 +56,7 @@ class PokemonListView(APIView):
 class FavoriteListCreateView(ListCreateAPIView):
     serializer_class = FavoriteSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         return Favorite.objects.filter(user=self.request.user).order_by("pokemon_id", "id")
@@ -77,6 +78,7 @@ class FavoriteDestroyView(DestroyAPIView):
 class TeamListView(ListAPIView):
     serializer_class = TeamSlotSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         return TeamSlot.objects.filter(user=self.request.user).order_by("slot", "id")
@@ -108,7 +110,19 @@ class TeamSetView(APIView):
                 for index, pokemon_id in enumerate(pokemon_ids, start=1)
             ]
             if slots:
-                TeamSlot.objects.bulk_create(slots)
+                try:
+                    TeamSlot.objects.bulk_create(slots)
+                except IntegrityError as exc:
+                    logger.warning(
+                        "team.update.conflict",
+                        extra={
+                            "event": "team.update.conflict",
+                            "extra_data": {"count": len(slots)},
+                        },
+                    )
+                    raise ValidationError(
+                        {"pokemon_ids": ["Equipe inválida. Verifique duplicatas ou slots fora do intervalo 1..6."]}
+                    ) from exc
 
         queryset = TeamSlot.objects.filter(user=user).order_by("slot", "id")
         response_serializer = TeamSlotSerializer(queryset, many=True)

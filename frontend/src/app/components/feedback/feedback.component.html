@@ -1,0 +1,11 @@
+<div
+  *ngIf="message() as current"
+  class="feedback"
+  role="status"
+  [attr.data-type]="current.type"
+>
+  <span>{{ current.message }}</span>
+  <button type="button" class="close" (click)="close()" aria-label="Fechar alerta">
+    ×
+  </button>
+</div>

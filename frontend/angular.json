@@ -1,0 +1,60 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "projects": {
+    "kogui-frontend": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:application",
+          "options": {
+            "outputPath": "dist/kogui-frontend",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "polyfills": [],
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets"
+            ],
+            "styles": [
+              "src/styles.css"
+            ],
+            "inlineStyleLanguage": "css"
+          },
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "optimization": true,
+              "extractLicenses": true,
+              "outputHashing": "all"
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "buildTarget": "kogui-frontend:build",
+            "port": 4200
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "kogui-frontend:build:production"
+            }
+          }
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": "b7196ac7-3ef5-4bd8-b08c-9a5faabd395d"
+  }
+}

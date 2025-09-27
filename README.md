@@ -76,6 +76,8 @@ O frontend usa `http://localhost:8000` como `apiBase` (definido em `src/environm
 
 ## Exemplos `curl`
 
+> ⚠️ No Windows PowerShell o comando `curl` é apenas um alias para `Invoke-WebRequest`, o que ignora flags como `-H` e `-d`. Utilize `curl.exe` (o binário real) ou `Invoke-RestMethod` para reproduzir os exemplos.
+
 ### Health check
 ```bash
 curl http://localhost:8000/health/
@@ -111,6 +113,22 @@ Resposta: `{ "refresh": "...", "access": "..." }`
 curl -X POST http://localhost:8000/authtokenrefresh \
   -H "Content-Type: application/json" \
   -d '{ "refresh": "<refresh_token>" }'
+```
+
+#### Login JWT no PowerShell
+
+```powershell
+# Usando o binário real do curl (atenção ao ^ para múltiplas linhas)
+curl.exe -X POST http://localhost:8000/authtoken ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\":\"ash\",\"password\":\"pikachu123\"}"
+```
+
+```powershell
+# Usando Invoke-RestMethod (alternativa nativa do PowerShell)
+Invoke-RestMethod -Uri "http://localhost:8000/authtoken" -Method Post `
+  -ContentType "application/json" `
+  -Body '{"username":"ash","password":"pikachu123"}'
 ```
 
 ### Listar Pokémon (geração + nome)

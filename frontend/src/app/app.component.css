@@ -1,0 +1,135 @@
+.app-shell {
+  min-height: 100vh;
+  background: var(--surface-background);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  background: var(--brand-orange);
+  color: #fff6ed;
+  padding: 2.5rem clamp(2rem, 5vw, 4rem) 0;
+  position: relative;
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.35);
+}
+
+.hero__content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: center;
+}
+
+.hero__titles h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3vw, 2rem);
+  font-weight: 700;
+  margin: 0;
+}
+
+.hero__titles p {
+  max-width: 520px;
+  font-size: 1rem;
+  margin-top: 0.75rem;
+  color: #fff7ed;
+}
+
+.hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hero__user {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+}
+
+.hero__actions a,
+.hero__actions button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.hero__actions a.active,
+.hero__actions button:hover,
+.hero__actions a:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.hero__actions button {
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.hero__actions .login-link {
+  border-style: dashed;
+}
+
+.hero__stripe {
+  height: 12px;
+  width: 100%;
+  background: var(--brand-purple);
+  margin-top: 2rem;
+  border-radius: 12px 12px 0 0;
+}
+
+.hero__counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1.2rem;
+  padding: 1.5rem clamp(2rem, 5vw, 4rem) 2.5rem;
+  background: #f5f3ff;
+  color: var(--text-primary);
+  border-radius: 0 0 24px 24px;
+}
+
+.counter-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.2rem;
+  box-shadow: 0 10px 24px rgba(109, 40, 217, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.counter-card strong {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--brand-purple);
+}
+
+.counter-label {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(76, 29, 149, 0.7);
+}
+
+.page {
+  flex: 1;
+  padding: clamp(2rem, 5vw, 4rem);
+}
+
+@media (max-width: 768px) {
+  .hero__actions {
+    justify-content: flex-start;
+  }
+
+  .hero__titles h1 {
+    font-size: 2.4rem;
+  }
+}

@@ -1,0 +1,57 @@
+:root {
+  --brand-orange: #f97316;
+  --brand-purple: #6d28d9;
+  --surface-background: #f6efe7;
+  --text-primary: #1f2937;
+  --text-muted: #4b5563;
+  --card-background: #ffffff;
+  --chip-background: rgba(255, 255, 255, 0.6);
+  --font-display: 'Segoe UI', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  --type-grass: #22c55e;
+  --type-fire: #ef4444;
+  --type-water: #3b82f6;
+  --type-electric: #f59e0b;
+  --type-poison: #a855f7;
+  --type-flying: #60a5fa;
+  --type-bug: #84cc16;
+  --type-normal: #9ca3af;
+  --type-psychic: #ec4899;
+  --type-ghost: #6366f1;
+  --type-dragon: #4338ca;
+  --type-ice: #38bdf8;
+  --type-rock: #a16207;
+  --type-ground: #d97706;
+  --type-fairy: #f472b6;
+  --type-dark: #111827;
+  --type-fighting: #b91c1c;
+  --type-steel: #9ca3af;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-display);
+  background: var(--surface-background);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+button, input, select {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+main {
+  width: 100%;
+}

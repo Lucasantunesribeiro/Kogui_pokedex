@@ -1,12 +1,40 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, switchMap, tap, throwError } from 'rxjs';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpHandlerFn,
+  HttpRequest,
+  HttpEvent
+} from '@angular/common/http';
+import {
+  Observable,
+  catchError,
+  finalize,
+  firstValueFrom,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+  throwError
+} from 'rxjs';
 
 import { environment as env } from '../../environments/environment';
 
 interface TokenResponse {
   access: string;
   refresh?: string;
+}
+
+interface AuthTokens {
+  access: string;
+  refresh: string;
+}
+
+interface PersistedAuthPayload {
+  access: string;
+  refresh: string;
+  user: UserProfile | null;
 }
 
 export interface UserProfile {
@@ -19,39 +47,40 @@ export interface UserProfile {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly storageKey = 'kogui-auth';
+  private readonly storageKey = 'kogui.auth';
+  private readonly legacyStorageKey = 'kogui-auth';
   private readonly http = inject(HttpClient);
 
-  private accessTokenSignal = signal<string | null>(null);
-  private refreshTokenSignal = signal<string | null>(null);
-  private profileSignal = signal<UserProfile | null>(null);
+  private readonly tokens = signal<AuthTokens | null>(null);
+  private readonly profileSignal = signal<UserProfile | null>(null);
 
-  readonly isLoggedIn = computed(() => !!this.accessTokenSignal());
+  private refreshInFlight$: Observable<string | null> | null = null;
+
+  readonly isLoggedIn = computed(() => !!this.tokens()?.access);
   readonly profile = computed(() => this.profileSignal());
   readonly isAdmin = computed(() => this.profileSignal()?.is_staff ?? false);
 
-  constructor() {
-    const raw = localStorage.getItem(this.storageKey);
-    if (raw) {
+  async rehydrateFromStorage(): Promise<void> {
+    const payload = this.readPersistedSession();
+    if (!payload) {
+      this.resetSession();
+      return;
+    }
+
+    this.tokens.set({ access: payload.access, refresh: payload.refresh });
+    if (payload.user) {
+      this.profileSignal.set(payload.user);
+    }
+    this.persistSession();
+
+    if (!payload.user) {
       try {
-        const parsed = JSON.parse(raw) as TokenResponse;
-        if (parsed.access) {
-          this.accessTokenSignal.set(parsed.access);
-        }
-        if (parsed.refresh) {
-          this.refreshTokenSignal.set(parsed.refresh);
-        }
-        if (parsed.access) {
-          this.fetchCurrentUser().subscribe({
-            error: () => this.clearTokens()
-          });
-        }
+        await firstValueFrom(this.fetchCurrentUser());
       } catch {
-        localStorage.removeItem(this.storageKey);
+        this.resetSession();
       }
     }
   }
-
   register(payload: {
     username: string;
     password: string;
@@ -80,24 +109,27 @@ export class AuthService {
     return this.http
       .post<TokenResponse>(`${env.apiBase}/authtoken`, body)
       .pipe(
-        tap((tokens) => this.persistTokens(tokens)),
+        tap((tokens) => this.updateTokens(tokens)),
         switchMap(() => this.fetchCurrentUser()),
         map(() => void 0),
         catchError((error) => {
-          this.clearTokens();
+          this.resetSession();
           return throwError(() => error);
         })
       );
   }
 
   logout(): void {
-    this.clearTokens();
+    this.resetSession();
   }
 
   fetchCurrentUser(): Observable<UserProfile> {
-    return this.http
-      .get<UserProfile>(`${env.apiBase}/auth/me/`)
-      .pipe(tap((profile) => this.profileSignal.set(profile)));
+    return this.http.get<UserProfile>(`${env.apiBase}/auth/me/`).pipe(
+      tap((profile) => {
+        this.profileSignal.set(profile);
+        this.persistSession();
+      })
+    );
   }
 
   changePassword(payload: {
@@ -123,53 +155,134 @@ export class AuthService {
   }
 
   getAccessToken(): string | null {
-    return this.accessTokenSignal();
+    return this.tokens()?.access ?? null;
   }
 
   getRefreshToken(): string | null {
-    return this.refreshTokenSignal();
+    return this.tokens()?.refresh ?? null;
   }
 
   isAuthenticated(): boolean {
     return this.isLoggedIn();
   }
+  handle401WithSingleFlightRefresh(
+    request: HttpRequest<unknown>,
+    next: HttpHandlerFn
+  ): (source: Observable<HttpEvent<unknown>>) => Observable<HttpEvent<unknown>> {
+    return (source: Observable<HttpEvent<unknown>>) =>
+      source.pipe(
+        catchError((error: HttpErrorResponse) => {
+          if (error.status !== 401) {
+            return throwError(() => error);
+          }
 
-  refreshAccessToken(): Observable<TokenResponse> {
-    const refresh = this.refreshTokenSignal();
+          return this.enqueueRefresh().pipe(
+            switchMap((token) => {
+              if (!token) {
+                this.resetSession();
+                return throwError(() => error);
+              }
+              const retriedRequest = request.clone({
+                setHeaders: { Authorization: `Bearer ${token}` }
+              });
+              return next(retriedRequest);
+            })
+          );
+        })
+      );
+  }
+
+  refreshAccessToken(): Observable<string | null> {
+    return this.enqueueRefresh();
+  }
+
+  private enqueueRefresh(): Observable<string | null> {
+    if (!this.refreshInFlight$) {
+      this.refreshInFlight$ = this.triggerRefresh().pipe(
+        shareReplay({ bufferSize: 1, refCount: false }),
+        finalize(() => {
+          this.refreshInFlight$ = null;
+        })
+      );
+    }
+    return this.refreshInFlight$;
+  }
+
+  private triggerRefresh(): Observable<string | null> {
+    const refresh = this.getRefreshToken();
     if (!refresh) {
-      return throwError(() => new Error('Sessão expirada.'));
+      return of(null);
     }
 
     return this.http
       .post<TokenResponse>(`${env.apiBase}/authtokenrefresh`, { refresh })
-      .pipe(tap((tokens) => this.persistTokens(tokens)));
+      .pipe(
+        tap((tokens) => this.updateTokens(tokens)),
+        map((tokens) => tokens.access ?? null),
+        catchError((error) => {
+          this.resetSession();
+          return of(null);
+        })
+      );
   }
 
-  private persistTokens(tokens: TokenResponse): void {
-    const refresh = tokens.refresh ?? this.refreshTokenSignal();
-    if (tokens.access) {
-      this.accessTokenSignal.set(tokens.access);
-      if (refresh) {
-        this.refreshTokenSignal.set(refresh);
-        localStorage.setItem(
-          this.storageKey,
-          JSON.stringify({ access: tokens.access, refresh })
-        );
-      } else {
-        localStorage.setItem(
-          this.storageKey,
-          JSON.stringify({ access: tokens.access })
-        );
+  private updateTokens(tokens: TokenResponse): void {
+    const current = this.tokens();
+    const refresh = tokens.refresh ?? current?.refresh;
+
+    if (!tokens.access || !refresh) {
+      this.resetSession();
+      return;
+    }
+
+    this.tokens.set({ access: tokens.access, refresh });
+    this.persistSession();
+  }
+
+  private persistSession(): void {
+    const tokens = this.tokens();
+    if (!tokens) {
+      localStorage.removeItem(this.storageKey);
+      localStorage.removeItem(this.legacyStorageKey);
+      return;
+    }
+
+    const payload: PersistedAuthPayload = {
+      access: tokens.access,
+      refresh: tokens.refresh,
+      user: this.profileSignal()
+    };
+    localStorage.setItem(this.storageKey, JSON.stringify(payload));
+    localStorage.removeItem(this.legacyStorageKey);
+  }
+
+  private readPersistedSession(): PersistedAuthPayload | null {
+    const raw =
+      localStorage.getItem(this.storageKey) || localStorage.getItem(this.legacyStorageKey);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<PersistedAuthPayload>;
+      if (typeof parsed.access !== 'string' || typeof parsed.refresh !== 'string') {
+        return null;
       }
-    } else {
-      this.clearTokens();
+      return {
+        access: parsed.access,
+        refresh: parsed.refresh,
+        user: parsed.user ?? null
+      };
+    } catch {
+      return null;
     }
   }
 
-  private clearTokens(): void {
-    this.accessTokenSignal.set(null);
-    this.refreshTokenSignal.set(null);
+  private resetSession(): void {
+    this.tokens.set(null);
     this.profileSignal.set(null);
+    this.refreshInFlight$ = null;
     localStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.legacyStorageKey);
   }
 }

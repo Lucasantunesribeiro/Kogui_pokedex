@@ -16,7 +16,16 @@ class Favorite(models.Model):
 
     class Meta:
         ordering = ["pokemon_id"]
-        unique_together = ("user", "pokemon_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "pokemon_id"],
+                name="uq_favorite_user_pokemon",
+            ),
+            models.CheckConstraint(
+                check=models.Q(pokemon_id__gt=0),
+                name="ck_favorite_positive_pokemon_id",
+            ),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - representação humana simples
         return f"{self.user.username} ♥ {self.pokemon_id}"
@@ -37,10 +46,24 @@ class TeamSlot(models.Model):
 
     class Meta:
         ordering = ["slot"]
-        unique_together = (
-            ("user", "slot"),
-            ("user", "pokemon_id"),
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "slot"],
+                name="uq_teamslot_user_slot",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "pokemon_id"],
+                name="uq_teamslot_user_pokemon",
+            ),
+            models.CheckConstraint(
+                check=models.Q(slot__gte=1) & models.Q(slot__lte=6),
+                name="ck_teamslot_slot_range",
+            ),
+            models.CheckConstraint(
+                check=models.Q(pokemon_id__gt=0),
+                name="ck_teamslot_positive_pokemon_id",
+            ),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - representação humana simples
         return f"#{self.slot} -> {self.user.username} ({self.pokemon_id})"

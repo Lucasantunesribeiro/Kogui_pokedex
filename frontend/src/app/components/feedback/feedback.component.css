@@ -1,0 +1,44 @@
+.feedback {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  backdrop-filter: blur(4px);
+  background: rgba(253, 244, 191, 0.9);
+  color: #422006;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 240px;
+}
+
+.feedback[data-type='success'] {
+  background: rgba(220, 252, 231, 0.9);
+  color: #14532d;
+}
+
+.feedback[data-type='error'] {
+  background: rgba(254, 202, 202, 0.95);
+  color: #7f1d1d;
+}
+
+.feedback[data-type='info'] {
+  background: rgba(219, 234, 254, 0.95);
+  color: #1e3a8a;
+}
+
+.close {
+  background: none;
+  border: 0;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

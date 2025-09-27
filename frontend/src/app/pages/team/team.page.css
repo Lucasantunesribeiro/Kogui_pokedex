@@ -1,0 +1,121 @@
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.team__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--brand-purple);
+}
+
+.clear {
+  border: none;
+  background: rgba(109, 40, 217, 0.15);
+  color: var(--brand-purple);
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clear:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  background: rgba(109, 40, 217, 0.08);
+  padding: 1rem;
+  border-radius: 1rem;
+  color: var(--brand-purple);
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.team-card {
+  background: var(--card-background);
+  border-radius: 20px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  min-height: 220px;
+}
+
+.team-card.empty {
+  border: 2px dashed rgba(109, 40, 217, 0.25);
+  background: rgba(255, 255, 255, 0.6);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.slot {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+}
+
+.identifier {
+  background: var(--brand-purple);
+  color: #fff;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+figure {
+  display: grid;
+  place-items: center;
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+figure img {
+  width: 96px;
+  height: 96px;
+}
+
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+button {
+  border: none;
+  background: var(--brand-orange);
+  color: #fff;
+  padding: 0.7rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: auto;
+}
+
+button:hover {
+  opacity: 0.95;
+}

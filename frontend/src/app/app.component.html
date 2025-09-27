@@ -1,0 +1,44 @@
+<div class="app-shell">
+  <app-feedback></app-feedback>
+  <header class="hero" role="banner">
+    <div class="hero__content">
+      <div class="hero__titles">
+        <h1>Pokédex Digital</h1>
+        <p>Acompanhe, filtre e organize seus monstrinhos favoritos sem sair do ecossistema pokémon.</p>
+      </div>
+      <nav class="hero__actions" aria-label="Navegação principal">
+        <a routerLink="/" routerLinkActive="active" aria-label="Listagem de Pokémon">Pokémon</a>
+        <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
+        <a routerLink="/team" routerLinkActive="active">Equipe</a>
+        <a *ngIf="isLoggedIn()" routerLink="/account/password" routerLinkActive="active">Segurança</a>
+        <a *ngIf="isAdminUser()" routerLink="/admin/users" routerLinkActive="active">Usuários</a>
+        <div *ngIf="isLoggedIn()" class="hero__user" aria-live="polite">
+          <span>Olá, {{ userProfile()?.username ?? 'Treinador' }}</span>
+        </div>
+        <button *ngIf="isLoggedIn(); else loginLink" type="button" (click)="logout()">Sair</button>
+        <ng-template #loginLink>
+          <a routerLink="/login" class="login-link">Entrar</a>
+        </ng-template>
+      </nav>
+    </div>
+    <div class="hero__stripe" aria-hidden="true"></div>
+    <section class="hero__counters" aria-label="Indicadores gerais">
+      <article class="counter-card" aria-live="polite">
+        <span class="counter-label">Pokémon</span>
+        <strong>{{ pokemonCount() ?? '—' }}</strong>
+      </article>
+      <article class="counter-card">
+        <span class="counter-label">Tipos</span>
+        <strong>{{ typesCount }}</strong>
+      </article>
+      <article class="counter-card">
+        <span class="counter-label">Gerações</span>
+        <strong>{{ generationCount }}</strong>
+      </article>
+    </section>
+  </header>
+
+  <main class="page" role="main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

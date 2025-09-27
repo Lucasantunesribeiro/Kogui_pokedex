@@ -1,0 +1,36 @@
+<section class="admin-users" aria-labelledby="users-admin-title">
+  <header class="admin-users__header">
+    <div>
+      <h2 id="users-admin-title">Gestão de usuários</h2>
+      <p>Visualize os perfis cadastrados e acompanhe quem possui acessos administrativos à Pokédex.</p>
+    </div>
+    <button type="button" (click)="loadUsers()" [disabled]="loading()">
+      {{ loading() ? 'Atualizando...' : 'Atualizar lista' }}
+    </button>
+  </header>
+
+  <ng-container *ngIf="!loading(); else loadingState">
+    <div *ngIf="users().length > 0; else emptyState" class="admin-users__table" role="table" aria-label="Tabela de usuários cadastrados">
+      <div class="admin-users__row admin-users__row--header" role="row">
+        <span role="columnheader">Usuário</span>
+        <span role="columnheader">E-mail</span>
+        <span role="columnheader">Administrador</span>
+        <span role="columnheader">Criado em</span>
+      </div>
+      <div *ngFor="let user of users()" class="admin-users__row" role="row">
+        <span role="cell">{{ user.username }}</span>
+        <span role="cell">{{ user.email || '—' }}</span>
+        <span role="cell" [class.badge-admin]="user.is_staff">{{ user.is_staff ? 'Sim' : 'Não' }}</span>
+        <span role="cell">{{ user.date_joined | date: 'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-template #loadingState>
+    <p class="admin-users__status">Carregando usuários...</p>
+  </ng-template>
+
+  <ng-template #emptyState>
+    <p class="admin-users__status">Nenhum usuário cadastrado encontrado.</p>
+  </ng-template>
+</section>

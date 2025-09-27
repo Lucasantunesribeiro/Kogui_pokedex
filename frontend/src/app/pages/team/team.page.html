@@ -1,0 +1,41 @@
+<section class="team" aria-label="Equipe de batalha">
+  <div class="team__header">
+    <h2>Equipe de Batalha</h2>
+    <button type="button" class="clear" (click)="clearTeam()" [disabled]="team().length === 0">
+      Limpar equipe
+    </button>
+  </div>
+
+  <div class="status" *ngIf="loading()">Carregando equipe...</div>
+
+  <div class="grid">
+    <article *ngFor="let slot of displaySlots()" class="team-card" [class.empty]="!slot.pokemon">
+      <header>
+        <span class="slot">Slot {{ slot.slot }}</span>
+        <span class="identifier" *ngIf="slot.pokemon">
+          {{ formatId(slot.pokemon?.pokemon_id) }}
+        </span>
+      </header>
+
+      <ng-container *ngIf="slot.pokemon; else emptySlot">
+        <figure>
+          <img
+            [src]="slot.pokemon?.pokemon?.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'"
+            [alt]="'Sprite de ' + formatName(slot.pokemon?.pokemon?.name)"
+          />
+        </figure>
+        <h3>{{ formatName(slot.pokemon?.pokemon?.name) }}</h3>
+        <div class="types" *ngIf="slot.pokemon?.pokemon?.types">
+          <span class="type" *ngFor="let type of slot.pokemon?.pokemon?.types" [class]="'type-badge type-' + type">
+            {{ type | titlecase }}
+          </span>
+        </div>
+        <button type="button" (click)="slot.pokemon && removeFromTeam(slot.pokemon)">Remover</button>
+      </ng-container>
+
+      <ng-template #emptySlot>
+        <p>Slot disponível</p>
+      </ng-template>
+    </article>
+  </div>
+</section>

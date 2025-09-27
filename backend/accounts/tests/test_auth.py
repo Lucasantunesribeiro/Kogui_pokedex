@@ -62,3 +62,22 @@ class TokenTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("detail", response.data)
+
+    def test_refresh_endpoint_returns_new_access_token(self) -> None:
+        obtain_url = reverse("token_obtain_pair")
+        obtain_response = self.client.post(
+            obtain_url,
+            {"username": self.user.username, "password": self.password},
+            format="json",
+        )
+        self.assertEqual(obtain_response.status_code, status.HTTP_200_OK)
+        refresh_token = obtain_response.data["refresh"]
+
+        refresh_url = reverse("token_refresh")
+        refresh_response = self.client.post(
+            refresh_url,
+            {"refresh": refresh_token},
+            format="json",
+        )
+        self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", refresh_response.data)

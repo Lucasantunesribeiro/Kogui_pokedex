@@ -1,0 +1,123 @@
+<section class="controls" aria-label="Filtros de pesquisa">
+  <div class="controls__group">
+    <label for="generation-select">Geração</label>
+    <select
+      id="generation-select"
+      [value]="generationFilter() ?? ''"
+      (change)="onGenerationChange($event)"
+    >
+      <option value="">Todas</option>
+      <option *ngFor="let generation of generations()" [value]="generation">
+        {{ generation }}ª Geração
+      </option>
+    </select>
+  </div>
+
+  <div class="controls__group">
+    <label for="search">Nome</label>
+    <input id="search" type="search" placeholder="Buscar por nome" [formControl]="searchControl" />
+  </div>
+
+  <button type="button" class="clear" (click)="clearFilters()">Limpar filtros</button>
+</section>
+
+<section class="type-chips" aria-label="Tipos de Pokémon">
+  <button
+    type="button"
+    *ngFor="let chip of typeChips"
+    (click)="setTypeFilter(chip.value)"
+    [class.active]="typeFilter() === chip.value"
+    [attr.data-type]="chip.value"
+  >
+    {{ chip.label }}
+  </button>
+</section>
+
+<section class="content">
+  <div class="status" *ngIf="loading()">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Carregando Pokémon...</span>
+  </div>
+
+  <div class="empty" *ngIf="!loading() && filteredPokemon().length === 0">
+    Nenhum Pokémon encontrado com os filtros selecionados.
+  </div>
+
+  <div class="grid" *ngIf="!loading() && filteredPokemon().length > 0">
+    <article
+      *ngFor="let pokemon of filteredPokemon()"
+      class="pokemon-card"
+      [attr.data-types]="pokemon.types.join(' ')"
+    >
+      <header class="pokemon-card__header">
+        <span class="pokemon-id">{{ formatId(pokemon.id) }}</span>
+        <button
+          type="button"
+          class="icon-button"
+          [class.active]="isFavorite(pokemon.id)"
+          (click)="onToggleFavorite(pokemon)"
+          [attr.aria-pressed]="isFavorite(pokemon.id)"
+        >
+          ❤
+          <span class="sr-only">Favoritar</span>
+        </button>
+      </header>
+
+      <figure>
+        <img
+          [src]="pokemon.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'"
+          [alt]="'Sprite de ' + formatName(pokemon.name)"
+        />
+      </figure>
+
+      <h3>{{ formatName(pokemon.name) }}</h3>
+
+      <div class="types">
+        <span class="type" *ngFor="let type of pokemon.types" [class]="'type-badge type-' + type">
+          {{ type | titlecase }}
+        </span>
+      </div>
+
+      <div class="stats" *ngIf="pokemon.stats">
+        <div class="stat">
+          <span>HP</span>
+          <div class="bar"><div class="fill" [style.width]="statWidth(pokemon.stats?.hp)"></div></div>
+        </div>
+        <div class="stat">
+          <span>Ataque</span>
+          <div class="bar"><div class="fill" [style.width]="statWidth(pokemon.stats?.attack)"></div></div>
+        </div>
+        <div class="stat">
+          <span>Defesa</span>
+          <div class="bar"><div class="fill" [style.width]="statWidth(pokemon.stats?.defense)"></div></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="outline" (click)="onToggleFavorite(pokemon)">
+          {{ isFavorite(pokemon.id) ? 'Favorito' : 'Favoritar' }}
+        </button>
+        <button
+          type="button"
+          class="solid"
+          [class.active]="isInTeam(pokemon.id)"
+          (click)="onToggleTeam(pokemon)"
+        >
+          {{ isInTeam(pokemon.id) ? 'Na equipe' : 'Equipe' }}
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <footer class="pagination" *ngIf="totalCount() > limit">
+    <button type="button" (click)="previousPage()" [disabled]="offset() === 0">Anterior</button>
+    <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
+    <button
+      type="button"
+      (click)="nextPage()"
+      [disabled]="offset() + limit >= totalCount()"
+    >
+      Próxima
+    </button>
+  </footer>
+</section>

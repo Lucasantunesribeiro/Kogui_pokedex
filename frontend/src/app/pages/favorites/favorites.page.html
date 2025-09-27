@@ -1,0 +1,30 @@
+<section class="favorites" aria-label="Pokémon favoritos">
+  <h2>Favoritos</h2>
+
+  <div class="status" *ngIf="loading()">Carregando favoritos...</div>
+
+  <div class="empty" *ngIf="!loading() && favorites().length === 0">
+    Você ainda não favoritou nenhum Pokémon.
+  </div>
+
+  <div class="grid" *ngIf="!loading() && favorites().length > 0">
+    <article *ngFor="let favorite of favorites()" class="favorite-card">
+      <header>
+        <h3>{{ formatName(favorite.pokemon?.name ?? '') }}</h3>
+        <span class="badge">{{ formatId(favorite.pokemon_id) }}</span>
+      </header>
+      <figure>
+        <img
+          [src]="favorite.pokemon?.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'"
+          [alt]="'Sprite de ' + formatName(favorite.pokemon?.name ?? '')"
+        />
+      </figure>
+      <div class="types" *ngIf="favorite.pokemon?.types">
+        <span class="type" *ngFor="let type of favorite.pokemon?.types" [class]="'type-badge type-' + type">
+          {{ type | titlecase }}
+        </span>
+      </div>
+      <button type="button" (click)="removeFavorite(favorite)">Remover</button>
+    </article>
+  </div>
+</section>
