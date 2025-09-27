@@ -5,7 +5,7 @@ import { Subject, catchError, finalize, switchMap, take, throwError } from 'rxjs
 
 import { AuthService } from './auth.service';
 
-const publicEndpoints = ['/authtoken', '/authtokenrefresh', '/authregister', '/auth/token/', '/auth/token/refresh/', '/auth/register/'];
+const publicEndpoints = ['/authtoken', '/authtokenrefresh', '/auth/register/'];
 
 const shouldSkipAuth = (url: string): boolean => publicEndpoints.some((endpoint) => url.includes(endpoint));
 

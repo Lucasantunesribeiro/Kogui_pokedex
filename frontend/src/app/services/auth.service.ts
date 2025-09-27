@@ -68,7 +68,7 @@ export class AuthService {
     if (payload.password_confirm) {
       body['password_confirm'] = payload.password_confirm;
     }
-    return this.http.post(`${env.apiBase}/authregister`, body);
+    return this.http.post(`${env.apiBase}/auth/register/`, body);
   }
 
   login(credentials: { username: string; password: string }): Observable<void> {
@@ -96,7 +96,7 @@ export class AuthService {
 
   fetchCurrentUser(): Observable<UserProfile> {
     return this.http
-      .get<UserProfile>(`${env.apiBase}/authme`)
+      .get<UserProfile>(`${env.apiBase}/auth/me/`)
       .pipe(tap((profile) => this.profileSignal.set(profile)));
   }
 
@@ -106,12 +106,12 @@ export class AuthService {
     new_password_confirm: string;
   }): Observable<void> {
     return this.http
-      .post<{ detail: string }>(`${env.apiBase}/authpasswordchange`, payload)
+      .post<{ detail: string }>(`${env.apiBase}/auth/password/change/`, payload)
       .pipe(map(() => void 0));
   }
 
   listUsers(): Observable<UserProfile[]> {
-    return this.http.get<UserProfile[]>(`${env.apiBase}/authusers`);
+    return this.http.get<UserProfile[]>(`${env.apiBase}/auth/users/`);
   }
 
   getCurrentUser(): UserProfile | null {

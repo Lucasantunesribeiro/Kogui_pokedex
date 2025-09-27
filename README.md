@@ -32,7 +32,7 @@ Usuário administrador (opcional):
 docker compose exec api python manage.py createsuperuser
 ```
 
-A API ficará disponível em `http://localhost:8000` (health check em `/health`). O frontend segue rodando localmente (veja abaixo).
+A API ficará disponível em `http://localhost:8000` (health check em `/health/`). O frontend segue rodando localmente (veja abaixo).
 
 ## Executando localmente
 
@@ -61,29 +61,29 @@ O frontend usa `http://localhost:8000` como `apiBase` (definido em `src/environm
 
 | Método | Rota | Descrição |
 | ------ | ---- | --------- |
-| POST | `/authregister` | Registro de usuário (senha + confirmação opcional).
+| POST | `/auth/register/` | Registro de usuário (senha + confirmação opcional).
 | POST | `/authtoken` | Login padrão SimpleJWT (`username` + `password`) gerando `{ "access", "refresh" }`.
 | POST | `/authtokenrefresh` | Renovação de access token.
-| GET | `/authme` | Dados do usuário autenticado (nome, e-mail, perfil). |
-| POST | `/authpasswordchange` | Atualiza a senha do usuário autenticado (requer senha atual). |
-| GET | `/authusers` | Lista usuários cadastrados (acesso restrito a administradores). |
-| GET | `/api/pokemon/` | Listagem paginada de Pokémon (`generation`, `name`, `limit`, `offset`). |
-| GET/POST | `/api/favorites/` | Lista e cria favoritos do usuário logado. |
-| DELETE | `/api/favorites/{id}/` | Remove favorito. |
-| GET | `/api/team/` | Slots atuais da equipe (1..6). |
-| POST | `/api/team/set/` | Substitui a equipe (corpo `{ "pokemon_ids": [1, 2, ...] }`, máximo 6 e sem duplicados). |
-| GET | `/health` | Health check com `{ "status": "ok" }`. |
+| GET | `/auth/me/` | Dados do usuário autenticado (nome, e-mail, perfil).
+| POST | `/auth/password/change/` | Atualiza a senha do usuário autenticado (requer senha atual).
+| GET | `/auth/users/` | Lista usuários cadastrados (acesso restrito a administradores).
+| GET | `/api/pokemon/` | Listagem paginada de Pokémon (`generation`, `name`, `limit`, `offset`).
+| GET/POST | `/api/favorites/` | Lista e cria favoritos do usuário logado.
+| DELETE | `/api/favorites/{id}/` | Remove favorito.
+| GET | `/api/team/` | Slots atuais da equipe (1..6).
+| POST | `/api/team/set/` | Substitui a equipe (corpo `{ "pokemon_ids": [1, 2, ...] }`, máximo 6 e sem duplicados).
+| GET | `/health/` | Health check com `{ "status": "ok" }`.
 
 ## Exemplos `curl`
 
 ### Health check
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/health/
 ```
 
 ### Registrar usuário
 ```bash
-curl -X POST http://localhost:8000/authregister \
+curl -X POST http://localhost:8000/auth/register/ \
   -H "Content-Type: application/json" \
   -d '{
         "username": "ash",
@@ -142,7 +142,7 @@ curl -X POST http://localhost:8000/api/team/set/ \
 
 - Autenticação JWT (SimpleJWT) com refresh automático via interceptor e redirecionamento seguro em respostas 401/403.
 - Proxy da PokéAPI no backend (timeout + retries) com dados normalizados (tipos, sprites, estatísticas HP/Ataque/Defesa).
-- Logs estruturados em JSON com `request_id` (header `X-Request-ID`) e health check exposto em `/health`.
+- Logs estruturados em JSON com `request_id` (header `X-Request-ID`) e health check exposto em `/health/`.
 - Favoritos modelados via tabela dedicada (`Favorite`) com unicidade por `(user, pokemon_id)`.
 - Equipe de batalha via `TeamSlot` (slots 1..6, sem duplicatas) atualizada por `POST /api/team/set/`.
 - Layout responsivo com cabeçalho laranja, faixa roxa, contadores, chips coloridos por tipo, cards e barras normalizadas.
