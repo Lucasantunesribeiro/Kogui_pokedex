@@ -1,0 +1,88 @@
+<section class="auth" aria-labelledby="auth-title">
+  <div class="auth-card">
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="mode() === 'login'"
+        (click)="switchMode('login')"
+      >
+        Entrar
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="mode() === 'register'"
+        (click)="switchMode('register')"
+      >
+        Registrar
+      </button>
+    </div>
+
+    <h2 id="auth-title">Acesse sua conta</h2>
+
+    <form *ngIf="mode() === 'login'" [formGroup]="loginForm" (ngSubmit)="submitLogin()" novalidate>
+      <label>
+        Usuário
+        <input type="text" formControlName="username" placeholder="ash.ketchum" autocomplete="username" required />
+      </label>
+      <div class="error" *ngIf="loginForm.get('username')?.touched && loginForm.get('username')?.invalid">
+        Informe um usuário válido.
+      </div>
+
+      <label>
+        Senha
+        <input type="password" formControlName="password" placeholder="••••••" autocomplete="current-password" required />
+      </label>
+      <div class="error" *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+        Informe uma senha válida (mínimo 6 caracteres).
+      </div>
+
+      <div class="error" *ngIf="loginError() as loginMessage">
+        {{ loginMessage }}
+      </div>
+
+      <button type="submit" class="primary">Entrar</button>
+    </form>
+
+    <form *ngIf="mode() === 'register'" [formGroup]="registerForm" (ngSubmit)="submitRegister()" novalidate>
+      <div class="error" *ngIf="registerErrors().length">
+        <p *ngFor="let message of registerErrors()">{{ message }}</p>
+      </div>
+
+      <label>
+        Usuário
+        <input type="text" formControlName="username" placeholder="mestre.pokemon" required />
+      </label>
+      <div class="error" *ngIf="registerForm.get('username')?.touched && registerForm.get('username')?.invalid">
+        Informe um usuário válido.
+      </div>
+
+      <label>
+        E-mail (opcional)
+        <input type="email" formControlName="email" placeholder="ash@pokedex.com" />
+      </label>
+      <div class="error" *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
+        Informe um e-mail válido.
+      </div>
+
+      <label>
+        Senha
+        <input type="password" formControlName="password" placeholder="mínimo 8 caracteres" required />
+      </label>
+      <div class="error" *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
+        A senha deve ter pelo menos 8 caracteres.
+      </div>
+
+      <label>
+        Confirmar senha
+        <input type="password" formControlName="confirmPassword" placeholder="repita a senha" required />
+      </label>
+      <div class="error" *ngIf="registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.invalid">
+        Confirme sua senha.
+      </div>
+
+      <button type="submit" class="primary">Cadastrar</button>
+    </form>
+  </div>
+</section>
