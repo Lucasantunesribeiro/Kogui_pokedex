@@ -1,22 +1,26 @@
 """Integrações com a PokéAPI v2."""
 from __future__ import annotations
 
-from functools import lru_cache
+import logging
+import os
 from typing import Any, Dict, List
 
-import logging
 import requests
+from django.core.cache import cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 POKEAPI_BASE_URL = "https://pokeapi.co/api/v2"
-SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "KoguiPokedex1.0"})
+CACHE_TTL = int(os.environ.get("POKEAPI_CACHE_TTL", "3600"))  # 1 hour default
 
+SESSION = requests.Session()
+SESSION.headers.update({"User-Agent": "KoguiPokedex/1.0 (Fair Use Cache Implementation)"})
+
+# Exponential backoff for 429/5xx errors
 retry_strategy = Retry(
     total=4,
-    backoff_factor=0.5,
-    status_forcelist=[502, 503, 504],
+    backoff_factor=1.0,  # More aggressive backoff for fair use
+    status_forcelist=[429, 502, 503, 504],  # Include 429 rate limit
     allowed_methods=["GET"],
 )
 adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -32,20 +36,34 @@ class PokeAPIError(RuntimeError):
 
 
 def _fetch_json(endpoint: str) -> Dict[str, Any]:
-    """Perform a GET request to PokéAPI with retries and structured logging."""
+    """Perform a GET request to PokéAPI with Django cache and backoff."""
+    cache_key = f"pokeapi:{endpoint}"
+
+    # Try cache first
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        logger.info("pokeapi.cache.hit", extra={"event": "pokeapi.cache.hit", "extra_data": {"endpoint": endpoint}})
+        return cached_data
+
+    # Cache miss - fetch from API
     url = f"{POKEAPI_BASE_URL}/{endpoint.lstrip('/')}"
     logger.info("pokeapi.fetch", extra={"event": "pokeapi.fetch", "extra_data": {"url": url}})
     try:
         response = SESSION.get(url, timeout=10)
         response.raise_for_status()
+        data = response.json()
+
+        # Cache the result
+        cache.set(cache_key, data, CACHE_TTL)
+
         logger.info(
             "pokeapi.fetch.success",
             extra={
                 "event": "pokeapi.fetch.success",
-                "extra_data": {"url": url, "status_code": response.status_code},
+                "extra_data": {"url": url, "status_code": response.status_code, "cached": True},
             },
         )
-        return response.json()
+        return data
     except requests.RequestException as exc:  # pragma: no cover - integração externa
         logger.error(
             "pokeapi.fetch.error",
@@ -100,14 +118,14 @@ def _parse_id_from_url(url: str) -> int:
     return int(url.rstrip("/").split("/")[-1])
 
 
-@lru_cache(maxsize=512)
 def get_pokemon(identifier: str | int) -> Dict[str, Any]:
+    """Get detailed Pokemon data with caching."""
     data = _fetch_json(f"pokemon/{identifier}/")
     return _normalize_pokemon(data)
 
 
-@lru_cache(maxsize=32)
 def get_generation_catalog(generation_id: int) -> List[Dict[str, Any]]:
+    """Get Pokemon catalog for a specific generation with caching."""
     payload = _fetch_json(f"generation/{generation_id}/")
     catalog = []
     for entry in payload.get("pokemon_species", []):
@@ -120,8 +138,8 @@ def get_generation_catalog(generation_id: int) -> List[Dict[str, Any]]:
     return catalog
 
 
-@lru_cache(maxsize=1)
 def get_global_catalog() -> List[Dict[str, Any]]:
+    """Get global Pokemon catalog with caching."""
     payload = _fetch_json("pokemon?limit=2000&offset=0")
     catalog = []
     for entry in payload.get("results", []):

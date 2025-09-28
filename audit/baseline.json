@@ -1,0 +1,96 @@
+{
+  "project": "Kogui Pokedex",
+  "timestamp": "2025-09-28T09:00:00Z",
+  "git_branch": "feat/complete-audit-optimization",
+  "baseline_metrics": {
+    "files": {
+      "backend_python": 32,
+      "frontend_ts_html_css": 37,
+      "total_project_files": 69,
+      "config_files": ["requirements.txt", "package.json", "angular.json", "tsconfig.json", "playwright.config.ts"]
+    },
+    "lines_of_code": {
+      "backend_python_total": 1488,
+      "frontend_total": 1077,
+      "total_loc": 2565
+    },
+    "dependencies": {
+      "backend": {
+        "total": 5,
+        "list": [
+          "Django==5.0.4",
+          "djangorestframework==3.15.1",
+          "djangorestframework-simplejwt==5.3.1",
+          "django-cors-headers==4.3.1",
+          "requests==2.31.0"
+        ]
+      },
+      "frontend": {
+        "dependencies_count": 8,
+        "dev_dependencies_count": 6,
+        "main_deps": [
+          "@angular/animations",
+          "@angular/common",
+          "@angular/compiler",
+          "@angular/core",
+          "@angular/forms",
+          "@angular/platform-browser",
+          "@angular/platform-browser-dynamic",
+          "@angular/router",
+          "rxjs",
+          "tslib",
+          "zone.js"
+        ]
+      }
+    },
+    "project_structure": {
+      "backend": {
+        "apps": ["accounts", "api", "kogui_pokedex"],
+        "key_files": [
+          "manage.py",
+          "kogui_pokedex/settings.py",
+          "kogui_pokedex/urls.py",
+          "kogui_pokedex/middleware.py",
+          "api/models.py",
+          "api/views.py",
+          "api/pokeapi_service.py",
+          "accounts/views.py"
+        ]
+      },
+      "frontend": {
+        "structure": "Angular 17 with standalone components",
+        "key_directories": ["src/app", "src/app/components", "src/app/services"],
+        "config_files": ["angular.json", "tsconfig.json", "playwright.config.ts"]
+      }
+    },
+    "api_endpoints": {
+      "auth": [
+        "/authtoken (POST - JWT obtain)",
+        "/authtokenrefresh (POST - JWT refresh)",
+        "/auth/ (accounts app routes)"
+      ],
+      "api": [
+        "/api/ (pokemon and team routes)"
+      ],
+      "utils": [
+        "/ (health check root)",
+        "/health/ (health check)",
+        "/admin/ (Django admin)"
+      ]
+    },
+    "identified_issues": {
+      "cors": "Already using django-cors-headers (good)",
+      "jwt": "Need to implement rotation + blacklist",
+      "pokeapi": "Needs cache + backoff implementation",
+      "openapi": "Missing drf-spectacular integration",
+      "frontend_signals": "Need to check for writes in computed/effect",
+      "frontend_templates": "Need to verify NgFor iterables"
+    }
+  },
+  "optimization_targets": {
+    "file_reduction": "35+ → 22-26 files",
+    "loc_reduction": "2565 → ~1667 LOC (35% reduction)",
+    "dependency_reduction": "30% reduction while keeping essentials",
+    "zero_errors": "Fix NG0600/NG0900/NG02200 Angular errors"
+  }
+}

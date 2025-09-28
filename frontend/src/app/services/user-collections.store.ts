@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { Subject, catchError, finalize, of, switchMap, tap } from 'rxjs';
 
 import { ApiService, FavoriteItem, TeamSlotItem } from './api.service';
@@ -17,6 +17,8 @@ export class UserCollectionsStore {
 
   private readonly favoritesRefresh$ = new Subject<void>();
   private readonly teamRefresh$ = new Subject<void>();
+
+  private readonly loginStatusChanges$ = toObservable(this.auth.isLoggedIn);
 
   private readonly favoritesFromApi = toSignal(
     this.favoritesRefresh$.pipe(
@@ -58,17 +60,15 @@ export class UserCollectionsStore {
       this.teamFromApi();
     });
 
-    effect(
-      () => {
-        if (this.auth.isLoggedIn()) {
-          this.refreshFavorites();
-          this.refreshTeam();
-        } else {
-          this.resetCollections();
-        }
-      },
-      { allowSignalWrites: true }
-    );
+    // Use RxJS interop instead of writing in effect
+    this.loginStatusChanges$.subscribe((isLoggedIn) => {
+      if (isLoggedIn) {
+        this.refreshFavorites();
+        this.refreshTeam();
+      } else {
+        this.resetCollections();
+      }
+    });
   }
 
   readonly favorites = this.favoritesState.asReadonly();
