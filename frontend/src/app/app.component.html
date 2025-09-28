@@ -1,42 +1,46 @@
 <div class="app-shell">
   <app-feedback></app-feedback>
-  <header class="hero" role="banner">
-    <div class="hero__content">
-      <div class="hero__titles">
-        <h1>Pokédex Digital</h1>
-        <p>Acompanhe, filtre e organize seus monstrinhos favoritos sem sair do ecossistema pokémon.</p>
+
+  <!-- Header laranja com título -->
+  <header class="orange-header" role="banner">
+    <div class="orange-header__container">
+      <div class="orange-header__logo">
+        <span class="logo-circle">○</span>
+        <div class="logo-text">
+          <h1>Pokédex Digital</h1>
+          <p>Explane seu próprio tipo com interação intuitiva. Encontre estratégias baseadas principalmente em integrações reais, sempre presente!</p>
+        </div>
       </div>
-      <nav class="hero__actions" aria-label="Navegação principal">
-        <a routerLink="/" routerLinkActive="active" aria-label="Listagem de Pokémon">Pokémon</a>
+      <nav class="orange-header__nav" aria-label="Navegação principal">
+        <a routerLink="/" routerLinkActive="active">Pokémon</a>
         <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
         <a routerLink="/team" routerLinkActive="active">Equipe</a>
-        <a *ngIf="isLoggedIn()" routerLink="/account/password" routerLinkActive="active">Segurança</a>
-        <a *ngIf="isAdminUser()" routerLink="/admin/users" routerLinkActive="active">Usuários</a>
-        <div *ngIf="isLoggedIn()" class="hero__user" aria-live="polite">
-          <span>Olá, {{ userProfile()?.username ?? 'Treinador' }}</span>
+        <div *ngIf="isLoggedIn()" class="user-menu">
+          <span>{{ userProfile()?.username ?? 'Treinador' }}</span>
+          <button type="button" (click)="logout()">Sair</button>
         </div>
-        <button *ngIf="isLoggedIn(); else loginLink" type="button" (click)="logout()">Sair</button>
-        <ng-template #loginLink>
-          <a routerLink="/login" class="login-link">Entrar</a>
-        </ng-template>
+        <a *ngIf="!isLoggedIn()" routerLink="/login" class="login-link">Entrar</a>
       </nav>
     </div>
-    <div class="hero__stripe" aria-hidden="true"></div>
-    <section class="hero__counters" aria-label="Indicadores gerais">
-      <article class="counter-card" aria-live="polite">
-        <span class="counter-label">Pokémon</span>
-        <strong>{{ pokemonCount() ?? '—' }}</strong>
-      </article>
-      <article class="counter-card">
-        <span class="counter-label">Tipos</span>
-        <strong>{{ typesCount }}</strong>
-      </article>
-      <article class="counter-card">
-        <span class="counter-label">Gerações</span>
-        <strong>{{ generationCount }}</strong>
-      </article>
-    </section>
   </header>
+
+  <!-- Seção roxa com contadores -->
+  <section class="purple-counters">
+    <div class="purple-counters__container">
+      <div class="counter-item">
+        <span class="counter-number">{{ pokemonCount() ?? '6' }}</span>
+        <span class="counter-label">Pokémon</span>
+      </div>
+      <div class="counter-item">
+        <span class="counter-number">{{ typesCount ?? '18' }}</span>
+        <span class="counter-label">Tipos</span>
+      </div>
+      <div class="counter-item">
+        <span class="counter-number">{{ generationCount ?? '9' }}</span>
+        <span class="counter-label">Gerações</span>
+      </div>
+    </div>
+  </section>
 
   <main class="page" role="main">
     <router-outlet></router-outlet>
