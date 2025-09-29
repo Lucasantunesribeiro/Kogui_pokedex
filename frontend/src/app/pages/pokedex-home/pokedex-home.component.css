@@ -1,0 +1,61 @@
+.pokedex-home {
+  min-height: 100vh;
+  background-color: var(--bg);
+}
+
+.main-content {
+  padding: var(--gap) 0;
+}
+
+.section-header {
+  margin-bottom: var(--gap);
+}
+
+.section-title {
+  margin: 0 0 8px 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  max-width: 600px;
+}
+
+.pokemon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--gap);
+  margin-top: var(--gap);
+}
+
+@media (min-width: 1024px) {
+  .pokemon-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .pokemon-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .pokemon-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.8rem;
+  }
+}

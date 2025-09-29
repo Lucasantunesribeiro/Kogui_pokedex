@@ -1,3 +1,6 @@
+@import url('./styles/tokens.css');
+@import url('./styles/global.css');
+
 :root {
   --brand-orange: #e85d04;
   --brand-purple: #6a4c93;

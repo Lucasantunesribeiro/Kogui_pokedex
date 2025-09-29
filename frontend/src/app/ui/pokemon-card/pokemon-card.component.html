@@ -1,0 +1,55 @@
+<article class="pokemon-card">
+  <div class="card-header">
+    <span class="pokemon-id">{{ formatId(pokemon.id) }}</span>
+    <div class="type-badges">
+      <span
+        *ngFor="let type of pokemon.types"
+        class="type-badge"
+        [style.background-color]="getTypeColor(type)">
+        {{ formatName(type) }}
+      </span>
+    </div>
+  </div>
+
+  <div class="pokemon-image-area">
+    <div class="image-frame">
+      <img
+        *ngIf="pokemon.imageUrl"
+        [src]="pokemon.imageUrl"
+        [alt]="formatName(pokemon.name)"
+        class="pokemon-image"
+        loading="lazy">
+      <div *ngIf="!pokemon.imageUrl" class="image-placeholder"></div>
+    </div>
+  </div>
+
+  <div class="pokemon-info">
+    <h3 class="pokemon-name">{{ formatName(pokemon.name) }}</h3>
+
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-label">HP</span>
+        <span class="stat-value">{{ pokemon.stats.hp }}</span>
+        <div class="stat-bar">
+          <div class="stat-fill" [style.width]="getStatWidth(pokemon.stats.hp)"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Ataque</span>
+        <span class="stat-value">{{ pokemon.stats.attack }}</span>
+        <div class="stat-bar">
+          <div class="stat-fill" [style.width]="getStatWidth(pokemon.stats.attack)"></div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Defesa</span>
+        <span class="stat-value">{{ pokemon.stats.defense }}</span>
+        <div class="stat-bar">
+          <div class="stat-fill" [style.width]="getStatWidth(pokemon.stats.defense)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
