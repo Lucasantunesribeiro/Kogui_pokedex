@@ -79,6 +79,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -152,8 +153,31 @@ LOGGING = {
     },
 }
 
+CORS_ALLOW_ALL_ORIGINS = True  # Para desenvolvimento
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
+    "http://localhost:80",
+    "http://frontend:80",
+    "http://api:8000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOWED_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 CSRF_TRUSTED_ORIGINS = ["http://localhost:4200"]

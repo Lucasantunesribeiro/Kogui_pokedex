@@ -156,6 +156,7 @@ def list_pokemon(
     *,
     generation: int | None = None,
     name: str | None = None,
+    type: str | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
@@ -170,8 +171,9 @@ def list_pokemon(
         offset_value = 0
 
     name_filter = (name or "").strip().lower()
+    type_filter = (type or "").strip().lower()
 
-    if not generation and not name_filter:
+    if not generation and not name_filter and not type_filter:
         payload = _fetch_json(f"pokemon?limit={limit_value}&offset={offset_value}")
         results = [
             get_pokemon(entry.get("name"))
@@ -196,9 +198,39 @@ def list_pokemon(
     if name_filter:
         catalog = [item for item in catalog if name_filter in item["name"].lower()]
 
-    total = len(catalog)
-    sliced = catalog[offset_value: offset_value + limit_value]
-    results = [get_pokemon(item["name"]) for item in sliced]
+    # Filtro por tipo - paginação eficiente
+    if type_filter:
+        filtered_results = []
+        current_offset = 0
+        batch_size = 50  # Processar em lotes pequenos
+
+        # Continuar buscando até ter resultados suficientes ou esgotar o catálogo
+        while len(filtered_results) < offset_value + limit_value and current_offset < len(catalog):
+            # Processar apenas um lote por vez
+            batch = catalog[current_offset:current_offset + batch_size]
+
+            for item in batch:
+                try:
+                    pokemon_data = get_pokemon(item["name"])
+                    if any(type_filter == pokemon_type.lower() for pokemon_type in pokemon_data.get("types", [])):
+                        filtered_results.append(pokemon_data)
+
+                    # Se já temos resultados suficientes, parar
+                    if len(filtered_results) >= offset_value + limit_value:
+                        break
+                except Exception:
+                    # Skip em caso de erro na PokéAPI
+                    continue
+
+            current_offset += batch_size
+
+        # Aplicar paginação nos resultados filtrados
+        total = len(filtered_results)  # Estimativa baseada nos resultados encontrados
+        results = filtered_results[offset_value:offset_value + limit_value]
+    else:
+        total = len(catalog)
+        sliced = catalog[offset_value: offset_value + limit_value]
+        results = [get_pokemon(item["name"]) for item in sliced]
 
     return {
         "count": total,

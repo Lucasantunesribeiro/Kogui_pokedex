@@ -81,15 +81,8 @@ export class PokemonPageComponent implements OnInit {
     { label: 'Dragão', value: 'dragon' },
   ];
 
-  readonly filteredPokemon = computed(() => {
-    const type = this.typeFilter();
-    if (type === 'all') {
-      return this.pokemonList();
-    }
-    return this.pokemonList().filter((pokemon) =>
-      pokemon.types.some((t) => t.toLowerCase() === type)
-    );
-  });
+  // Como o backend agora filtra os dados, não precisamos de filtro local
+  readonly filteredPokemon = computed(() => this.pokemonList());
 
   readonly favoriteMap = computed(() => {
     const map = new Map<number, FavoriteItem>();
@@ -145,33 +138,22 @@ export class PokemonPageComponent implements OnInit {
    * nome e paginação. Emite sinais de carregamento para a UI.
    */
   fetchPokemon(): void {
-    /**
-     * Quando o filtro por tipo está ativo (diferente de "all"), carregamos todos
-     * os Pokémon de uma vez, pois o backend não suporta filtragem por tipo. Isso
-     * garante que o usuário veja resultados mesmo que não estejam na primeira
-     * página. Caso contrário, usamos paginação normal.
-     */
     this.loading.set(true);
-    const isTypeFiltered = this.typeFilter() !== 'all';
-    const limit = isTypeFiltered
-      ? this.totalCount() || this.limit // carrega tudo quando conhecido
-      : this.limit;
-    const offset = isTypeFiltered ? 0 : this.offset();
+
+    // Usar paginação normal para todos os casos
+    // O backend agora suporta filtro por tipo nativamente
     this.api
       .listPokemon({
         generation: this.generationFilter() ?? undefined,
         name: this.searchTerm() || undefined,
-        limit,
-        offset,
+        type: this.typeFilter() !== 'all' ? this.typeFilter() : undefined,
+        limit: this.limit,
+        offset: this.offset(),
       })
       .subscribe({
         next: (response) => {
           this.totalCount.set(response.count);
           this.pokemonList.set(response.results);
-          // Se carregamos todos os resultados, reposicionamos o offset para 0
-          if (isTypeFiltered) {
-            this.offset.set(0);
-          }
           this.loading.set(false);
         },
         error: () => {
