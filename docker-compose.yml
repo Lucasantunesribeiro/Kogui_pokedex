@@ -1,7 +1,8 @@
 services:
   api:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    entrypoint: ["/bin/bash", "entrypoint.sh"]
+    command: ["gunicorn", "kogui_pokedex.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]
     volumes:
       - ./backend:/app
     ports:
@@ -16,6 +17,7 @@ services:
     build: ./frontend
     ports:
       - "80:80"
+      - "4200:80"
     depends_on:
       - api
     restart: unless-stopped

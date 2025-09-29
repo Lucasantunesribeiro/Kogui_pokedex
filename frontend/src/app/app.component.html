@@ -8,7 +8,7 @@
         <span class="logo-circle">○</span>
         <div class="logo-text">
           <h1>Pokédex Digital</h1>
-          <p>Explane seu próprio tipo com interação intuitiva. Encontre estratégias baseadas principalmente em integrações reais, sempre presente!</p>
+          <p>Explore o mundo dos Pokémon com nossa Pokédex interativa. Descubra informações detalhadas sobre cada criatura.</p>
         </div>
       </div>
       <nav class="orange-header__nav" aria-label="Navegação principal">
@@ -16,14 +16,8 @@
         <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
         <a routerLink="/team" routerLinkActive="active">Equipe</a>
         <a *ngIf="isAdmin()" routerLink="/admin/users" routerLinkActive="active" class="admin-link">Admin</a>
-        <div *ngIf="isLoggedIn()" class="user-menu">
-          <span>{{ userProfile()?.username ?? 'Treinador' }}</span>
-          <div class="user-dropdown">
-            <a routerLink="/account/password">Alterar senha</a>
-            <button type="button" (click)="logout()">Sair</button>
-          </div>
-        </div>
         <a *ngIf="!isLoggedIn()" routerLink="/login" class="login-link">Entrar</a>
+        <button *ngIf="isLoggedIn()" type="button" (click)="logout()">Sair</button>
       </nav>
     </div>
   </header>
