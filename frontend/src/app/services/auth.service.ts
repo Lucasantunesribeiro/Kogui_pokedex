@@ -107,7 +107,7 @@ export class AuthService {
     };
 
     return this.http
-      .post<TokenResponse>(`${env.apiBase}/authtoken`, body)
+      .post<TokenResponse>(`${env.apiBase}/api/token/`, body)
       .pipe(
         tap((tokens) => this.updateTokens(tokens)),
         switchMap(() => this.fetchCurrentUser()),
@@ -142,8 +142,45 @@ export class AuthService {
       .pipe(map(() => void 0));
   }
 
+  requestPasswordReset(email: string): Observable<{ detail: string }> {
+    return this.http
+      .post<{ detail: string }>(`${env.apiBase}/auth/password/reset/`, { email });
+  }
+
+  confirmPasswordReset(payload: {
+    uid: string;
+    token: string;
+    new_password: string;
+    new_password_confirm: string;
+  }): Observable<{ detail: string }> {
+    return this.http
+      .post<{ detail: string }>(`${env.apiBase}/auth/password/reset/confirm/`, payload);
+  }
+
   listUsers(): Observable<UserProfile[]> {
     return this.http.get<UserProfile[]>(`${env.apiBase}/auth/users/`);
+  }
+
+  createUser(payload: {
+    username: string;
+    email?: string;
+    password: string;
+    password_confirm: string;
+    is_staff: boolean;
+  }): Observable<UserProfile> {
+    return this.http.post<UserProfile>(`${env.apiBase}/auth/users/create/`, payload);
+  }
+
+  updateUser(userId: number, payload: {
+    username: string;
+    email?: string;
+    is_staff: boolean;
+  }): Observable<UserProfile> {
+    return this.http.put<UserProfile>(`${env.apiBase}/auth/users/${userId}/`, payload);
+  }
+
+  deleteUser(userId: number): Observable<void> {
+    return this.http.delete<void>(`${env.apiBase}/auth/users/${userId}/`);
   }
 
   getCurrentUser(): UserProfile | null {
@@ -215,7 +252,7 @@ export class AuthService {
     }
 
     return this.http
-      .post<TokenResponse>(`${env.apiBase}/authtokenrefresh`, { refresh })
+      .post<TokenResponse>(`${env.apiBase}/api/token/refresh/`, { refresh })
       .pipe(
         tap((tokens) => this.updateTokens(tokens)),
         map((tokens) => tokens.access ?? null),

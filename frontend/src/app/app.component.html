@@ -15,9 +15,13 @@
         <a routerLink="/" routerLinkActive="active">Pokémon</a>
         <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
         <a routerLink="/team" routerLinkActive="active">Equipe</a>
+        <a *ngIf="isAdmin()" routerLink="/admin/users" routerLinkActive="active" class="admin-link">Admin</a>
         <div *ngIf="isLoggedIn()" class="user-menu">
           <span>{{ userProfile()?.username ?? 'Treinador' }}</span>
-          <button type="button" (click)="logout()">Sair</button>
+          <div class="user-dropdown">
+            <a routerLink="/account/password">Alterar senha</a>
+            <button type="button" (click)="logout()">Sair</button>
+          </div>
         </div>
         <a *ngIf="!isLoggedIn()" routerLink="/login" class="login-link">Entrar</a>
       </nav>

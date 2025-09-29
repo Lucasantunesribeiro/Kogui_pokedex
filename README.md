@@ -14,6 +14,8 @@ Sistema completo de Pokédex digital desenvolvido como teste técnico, demonstra
 - 📜 **Listagem paginada** de Pokémon com filtros (geração, nome, tipo)
 - ❤️ **Sistema de favoritos** persistente por usuário
 - ⚔️ **Equipe de batalha** (máximo 6 Pokémon únicos)
+- 🔑 **Reset de senha** via email com tokens seguros
+- 👨‍💼 **Painel administrativo** completo para gestão de usuários
 - 🎨 **Interface responsiva** com design moderno
 - 📊 **Documentação OpenAPI** automática (Swagger/ReDoc)
 - 🚀 **Cache inteligente** da PokéAPI com fair use

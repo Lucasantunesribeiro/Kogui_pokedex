@@ -46,6 +46,10 @@ export class AppComponent implements OnInit {
     });
   }
 
+  isAdmin(): boolean {
+    return this.isAdminUser();
+  }
+
   logout(): void {
     this.auth.logout();
     this.feedback.notifyInfo('Sessão encerrada.');

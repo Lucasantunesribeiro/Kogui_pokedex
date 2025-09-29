@@ -1,18 +1,53 @@
-<!-- Seção Pokémon Descobertos -->
-<div class="pokemon-discovered">
-  <div class="pokemon-discovered__container">
-    <div class="section-header">
-      <h2>Pokémon Descobertos</h2>
-      <div class="filter-tabs">
-        <button type="button" class="filter-tab active">Descobertos</button>
-        <button type="button" class="filter-tab">Fogo</button>
-        <button type="button" class="filter-tab">Água</button>
-        <button type="button" class="filter-tab">Planta</button>
-        <button type="button" class="filter-tab">Elétrico</button>
-      </div>
+<!-- Header com busca e filtros -->
+<header class="pokemon-header">
+  <div class="pokemon-header__container">
+    <h1>Pokédx Digital</h1>
+    <div class="search-section">
+      <input
+        type="text"
+        [formControl]="searchControl"
+        placeholder="Buscar Pokémon..."
+        class="search-input"
+      />
+      <select
+        class="generation-select"
+        [value]="generationFilter() ?? ''"
+        (change)="onGenerationChange($event)"
+      >
+        <option value="">Todas as gerações</option>
+        <option *ngFor="let gen of generations()" [value]="gen">
+          Geração {{ gen }}
+        </option>
+      </select>
+      <button
+        type="button"
+        class="clear-filters"
+        (click)="clearFilters()"
+        [disabled]="!searchTerm() && !generationFilter() && typeFilter() === 'all'"
+      >
+        Limpar Filtros
+      </button>
     </div>
   </div>
-</div>
+</header>
+
+<!-- Seção de filtros por tipo -->
+<section class="type-filters">
+  <div class="type-filters__container">
+    <h2>Filtrar por Tipo</h2>
+    <div class="type-chips">
+      <button
+        *ngFor="let chip of typeChips"
+        type="button"
+        class="type-chip"
+        [class.active]="typeFilter() === chip.value"
+        (click)="setTypeFilter(chip.value)"
+      >
+        {{ chip.label }}
+      </button>
+    </div>
+  </div>
+</section>
 
 <section class="content">
   <div class="status" *ngIf="loading()">
@@ -27,51 +62,92 @@
   <div class="pokemon-grid" *ngIf="!loading() && filteredPokemon().length > 0">
     <div class="pokemon-grid__container">
       <article
-        *ngFor="let pokemon of filteredPokemon() | slice:0:6"
+        *ngFor="let pokemon of filteredPokemon()"
         class="pokemon-card"
         [attr.data-types]="pokemon.types.join(' ')"
       >
-        <!-- Badge de status no canto superior -->
-        <div class="pokemon-card__badges">
-          <span
-            class="status-badge"
-            [ngClass]="{
-              'status-badge--new': pokemon.id === 1,
-              'status-badge--hot': pokemon.id === 4,
-              'status-badge--cool': pokemon.id === 7
-            }"
-          >
-            <span *ngIf="pokemon.id === 1" class="badge-text">NEW</span>
-            <span *ngIf="pokemon.id === 4" class="badge-text">HOT</span>
-            <span *ngIf="pokemon.id === 7" class="badge-text">COOL</span>
-          </span>
-          <span class="pokemon-id">#{{ formatId(pokemon.id) }}</span>
+        <!-- Header do card com ID e ações -->
+        <div class="pokemon-card__header">
+          <span class="pokemon-id">{{ formatId(pokemon.id) }}</span>
+          <div class="pokemon-actions">
+            <button
+              type="button"
+              class="action-btn favorite-btn"
+              [class.active]="isFavorite(pokemon.id)"
+              (click)="onToggleFavorite(pokemon)"
+              [title]="isFavorite(pokemon.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
+            >
+              ♥
+            </button>
+            <button
+              type="button"
+              class="action-btn team-btn"
+              [class.active]="isInTeam(pokemon.id)"
+              (click)="onToggleTeam(pokemon)"
+              [title]="isInTeam(pokemon.id) ? 'Remover da equipe' : 'Adicionar à equipe'"
+            >
+              ⚔
+            </button>
+          </div>
         </div>
 
         <!-- Sprite do Pokémon -->
         <div class="pokemon-card__image">
           <img
-            [src]="pokemon.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'"
+            [src]="pokemon.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + pokemon.id + '.png'"
             [alt]="'Sprite de ' + formatName(pokemon.name)"
+            loading="lazy"
           />
         </div>
 
-        <!-- Nome do Pokémon -->
-        <h3 class="pokemon-card__name">{{ formatName(pokemon.name) }}</h3>
+        <!-- Nome e tipos -->
+        <div class="pokemon-card__info">
+          <h3 class="pokemon-card__name">{{ formatName(pokemon.name) }}</h3>
+          <div class="pokemon-types">
+            <span
+              *ngFor="let type of pokemon.types"
+              class="type-badge"
+              [attr.data-type]="type.toLowerCase()"
+            >
+              {{ type }}
+            </span>
+          </div>
+        </div>
 
         <!-- Barras de stats -->
         <div class="pokemon-card__stats" *ngIf="pokemon.stats">
-          <div class="stat-bar">
-            <div class="stat-bar__fill" [style.width]="statWidth(pokemon.stats?.hp)" style="background-color: #ffa500;"></div>
-            <span class="stat-bar__value">{{ pokemon.stats?.hp }}</span>
+          <div class="stat-row">
+            <span class="stat-label">HP</span>
+            <div class="stat-bar">
+              <div
+                class="stat-bar__fill"
+                [style.width]="statWidth(pokemon.stats?.hp)"
+                style="background-color: var(--stat-orange);"
+              ></div>
+              <span class="stat-value">{{ pokemon.stats?.hp }}</span>
+            </div>
           </div>
-          <div class="stat-bar">
-            <div class="stat-bar__fill" [style.width]="statWidth(pokemon.stats?.attack)" style="background-color: #ff6b6b;"></div>
-            <span class="stat-bar__value">{{ pokemon.stats?.attack }}</span>
+          <div class="stat-row">
+            <span class="stat-label">ATK</span>
+            <div class="stat-bar">
+              <div
+                class="stat-bar__fill"
+                [style.width]="statWidth(pokemon.stats?.attack)"
+                style="background-color: var(--stat-red);"
+              ></div>
+              <span class="stat-value">{{ pokemon.stats?.attack }}</span>
+            </div>
           </div>
-          <div class="stat-bar">
-            <div class="stat-bar__fill" [style.width]="statWidth(pokemon.stats?.defense)" style="background-color: #4ecdc4;"></div>
-            <span class="stat-bar__value">{{ pokemon.stats?.defense }}</span>
+          <div class="stat-row">
+            <span class="stat-label">DEF</span>
+            <div class="stat-bar">
+              <div
+                class="stat-bar__fill"
+                [style.width]="statWidth(pokemon.stats?.defense)"
+                style="background-color: var(--stat-teal);"
+              ></div>
+              <span class="stat-value">{{ pokemon.stats?.defense }}</span>
+            </div>
           </div>
         </div>
       </article>

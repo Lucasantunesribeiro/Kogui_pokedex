@@ -36,6 +36,26 @@ class PokemonListView(APIView):
                 limit=filters["limit"],
                 offset=filters["offset"],
             )
+
+            # Se usuário logado, adicionar informações de favoritos e equipe
+            if request.user.is_authenticated:
+                user_favorites = set(
+                    Favorite.objects.filter(user=request.user).values_list("pokemon_id", flat=True)
+                )
+                user_team = set(
+                    TeamSlot.objects.filter(user=request.user).values_list("pokemon_id", flat=True)
+                )
+
+                # Adicionar informações aos pokémon
+                for pokemon in payload.get("results", []):
+                    pokemon_id = pokemon.get("id")
+                    if pokemon_id:
+                        pokemon["is_favorite"] = pokemon_id in user_favorites
+                        pokemon["is_in_team"] = pokemon_id in user_team
+                    else:
+                        pokemon["is_favorite"] = False
+                        pokemon["is_in_team"] = False
+
         except PokeAPIError as exc:
             logger.error(
                 "pokemon.list.error",
