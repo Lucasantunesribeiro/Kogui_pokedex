@@ -1,32 +1,38 @@
 <div class="app-shell">
   <app-feedback></app-feedback>
 
-  <!-- Header laranja com título -->
+  <!-- HEADER (faixa laranja) -->
   <header class="orange-header" role="banner">
     <div class="orange-header__container">
+      <!-- Brand centralizado -->
       <div class="orange-header__logo">
-        <span class="logo-circle">○</span>
+        <span class="logo-circle" aria-hidden="true"></span>
         <div class="logo-text">
           <h1>Pokédex Digital</h1>
-          <p>Explore o mundo dos Pokémon com nossa Pokédex interativa. Descubra informações detalhadas sobre cada criatura.</p>
+          <p>
+            Explore o mundo dos Pokémon com nossa Pokédex interativa.
+            Descubra informações detalhadas sobre cada criatura.
+          </p>
         </div>
       </div>
+
+      <!-- Navegação à direita -->
       <nav class="orange-header__nav" aria-label="Navegação principal">
         <a routerLink="/" routerLinkActive="active">Pokémon</a>
         <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
         <a routerLink="/team" routerLinkActive="active">Equipe</a>
-        <a *ngIf="isAdmin()" routerLink="/admin/users" routerLinkActive="active" class="admin-link">Admin</a>
-        <a *ngIf="!isLoggedIn()" routerLink="/login" class="login-link">Entrar</a>
+        <a *ngIf="isAdmin()" routerLink="/admin/users" routerLinkActive="active">Admin</a>
+        <a *ngIf="!isLoggedIn()" routerLink="/login">Entrar</a>
         <button *ngIf="isLoggedIn()" type="button" (click)="logout()">Sair</button>
       </nav>
     </div>
   </header>
 
-  <!-- Seção roxa com contadores -->
-  <section class="purple-counters">
+  <!-- FAIXA ROXA COM CONTADORES (logo abaixo do título) -->
+  <section class="purple-counters" aria-label="Resumo da Pokédex">
     <div class="purple-counters__container">
       <div class="counter-item">
-        <span class="counter-number">{{ pokemonCount() ?? '6' }}</span>
+        <span class="counter-number">{{ pokemonCount() ?? '1302' }}</span>
         <span class="counter-label">Pokémon</span>
       </div>
       <div class="counter-item">
@@ -40,6 +46,7 @@
     </div>
   </section>
 
+  <!-- CONTEÚDO -->
   <main class="page" role="main">
     <router-outlet></router-outlet>
   </main>
