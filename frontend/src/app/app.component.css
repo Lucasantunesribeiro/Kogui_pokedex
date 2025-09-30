@@ -13,28 +13,25 @@
 .orange-header {
   background: var(--brand-orange);
   color: #fff;
-  padding: 18px 0 14px;
+  padding: 14px 0 12px;
 }
 
-/* grid p/ centralizar o brand e manter nav à direita */
+/* container: brand à esquerda, nav à direita */
 .orange-header__container {
   width: min(1200px, 92vw);
   margin: 0 auto;
   padding: 0 16px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr; /* centro + nav à direita */
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
 }
 
-/* o bloco do título ocupa a coluna do meio e fica centralizado */
 .orange-header__logo {
-  grid-column: 2;
-  justify-self: center;
-  display: grid;
-  grid-auto-flow: column;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
   gap: 12px;
-  text-align: left; /* fica igual ao mock (título + parágrafo alinhados) */
+  max-width: 560px;
 }
 
 .logo-circle {
@@ -47,25 +44,23 @@
 }
 
 .logo-text h1 {
-  margin: 0;
+  margin: 0 0 4px 0;
   font-weight: 800;
-  font-size: 26px;
+  font-size: 24px; /* menor como no mock */
   line-height: 1.1;
 }
 
 .logo-text p {
-  margin: 6px 0 0 0;
+  margin: 0;
   max-width: 520px;
-  font-size: 14px;
+  font-size: 13px;
   color: #ffeadb;
 }
 
-/* nav na 3ª coluna (direita) como pílulas */
+/* Nav em pílulas à direita */
 .orange-header__nav {
-  grid-column: 3;
-  justify-self: end;
   display: flex;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -73,9 +68,9 @@
 .orange-header__nav button {
   color: #fff;
   text-decoration: none;
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.35);
   background: transparent;
-  padding: 9px 16px;
+  padding: 8px 14px;
   border-radius: 999px;
   font-weight: 700;
   line-height: 1;
@@ -91,35 +86,35 @@
 
 /* ===========================
    FAIXA ROXA + CONTADORES
+   Alinhados à ESQUERDA, tamanho pequeno
    =========================== */
 .purple-counters {
   background: var(--brand-purple);
   color: #fff;
-  padding: 22px 0 26px;
+  padding: 10px 0; /* faixa mais baixa como no mock */
+  border-top: 1px solid rgba(0,0,0,.06);
 }
 
 .purple-counters__container {
   width: min(1200px, 92vw);
   margin: 0 auto;
   padding: 0 16px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: clamp(32px, 8vw, 80px);
-  align-items: center;
-  justify-items: center;
-  text-align: center;
+  display: flex;
+  gap: 28px;               /* espaço entre os 3 números */
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
 }
 
-.counter-item { display: grid; gap: 6px; }
+.counter-item { display: grid; gap: 2px; }
 .counter-number {
   font-weight: 800;
-  font-size: clamp(28px, 5vw, 44px); /* grande como no mock */
+  font-size: 16px;        /* pequeno, como na referência */
   line-height: 1;
 }
 .counter-label {
-  font-size: 13px;
-  letter-spacing: .12em;
+  font-size: 11px;
+  letter-spacing: .14em;
   text-transform: uppercase;
   opacity: .85;
 }
@@ -131,12 +126,14 @@
 }
 
 /* responsivo */
-@media (max-width: 760px) {
-  .orange-header__container {
-    grid-template-columns: 1fr auto;
-    row-gap: 12px;
-  }
-  .orange-header__logo { grid-column: 1 / -1; justify-self: center; text-align: center; }
-  .logo-text p { margin-left: 0; }
-  .purple-counters__container { grid-auto-flow: row; }
+@media (max-width: 860px) {
+  .orange-header__container { flex-direction: column; align-items: stretch; gap: 12px; }
+  .orange-header__nav { align-self: flex-end; }
+}
+
+@media (max-width: 640px) {
+  .orange-header__nav { align-self: center; flex-wrap: wrap; justify-content: center; }
+  .purple-counters__container { gap: 22px; }
+  .counter-number { font-size: 15px; }
+  .counter-label { font-size: 10px; }
 }
