@@ -1,151 +1,81 @@
-<!--
-  Página de listagem de Pokémon
-  Esta versão ajusta o layout para ficar mais próximo do mock final fornecido.
-  Inclui filtros por tipo, cartões com IDs, badges de tipo, barras de atributos e
-  botões para favoritar e adicionar à equipe.
--->
+<!-- Seção de filtros por TIPO (somente tipos, sem geração) -->
+<section class="filters">
+  <div class="filters__container">
+    <h2 class="filters__title">Pokémon Descobertos</h2>
 
-<!-- Seção de filtros por tipo -->
-<section class="type-filters">
-  <div class="type-filters__container">
-    <h2>Pokémon Descobertos</h2>
-    <div class="type-chips">
+    <div class="filters__chips">
       <button
-        *ngFor="let chip of typeChips"
-        type="button"
-        class="type-chip"
-        [class.active]="typeFilter() === chip.value"
-        (click)="setTypeFilter(chip.value)"
+        *ngFor="let t of typeList"
+        class="filter-chip"
+        [class.filter-chip--active]="selectedType() === t"
+        (click)="onType(t)"
       >
-        {{ chip.label }}
+        {{ t === 'all' ? 'Todos os Tipos' : (t | titlecase) }}
       </button>
     </div>
   </div>
 </section>
 
-<section class="content">
-  <!-- Estado de carregamento -->
-  <div class="status" *ngIf="loading()">
-    <div class="spinner" aria-hidden="true"></div>
-    <span>Carregando Pokémon...</span>
+<!-- Grid de cards -->
+<main class="content">
+  <div class="pokemon-grid">
+    <article class="pokemon-card" *ngFor="let p of pokemons(); trackBy: trackById">
+      <header class="pokemon-card__header">
+        <span class="pokemon-id">{{ p.dex }}</span>
+
+        <div class="pokemon-card__top-right">
+          <div class="pokemon-types">
+            <span class="type-badge"
+                  *ngFor="let type of p.types"
+                  [style.background-color]="getTypeColor(type)">
+              {{ type }}
+            </span>
+          </div>
+
+          <!-- Favoritos -->
+          <button class="icon-btn"
+                  [class.icon-btn--active]="favoriteMap().has(p.id)"
+                  [attr.aria-pressed]="favoriteMap().has(p.id)"
+                  (click)="toggleFavorite(p)"
+                  title="Favoritar">
+            <span *ngIf="!favoriteMap().has(p.id)">♡</span>
+            <span *ngIf="favoriteMap().has(p.id)">♥</span>
+          </button>
+
+          <!-- Equipe -->
+          <button class="icon-btn sword"
+                  [class.icon-btn--active]="isInTeam(p.id)"
+                  [attr.aria-pressed]="isInTeam(p.id)"
+                  (click)="toggleTeam(p)"
+                  title="Adicionar à equipe (máx. 6)">
+            ⚔
+          </button>
+        </div>
+      </header>
+
+      <figure class="pokemon-card__image">
+        <img [src]="sprite(p)" [alt]="p.name" />
+      </figure>
+
+      <h3 class="pokemon-card__name">{{ p.name }}</h3>
+
+      <ul class="pokemon-card__stats">
+        <li class="stat-row">
+          <span class="stat-label">HP</span>
+          <div class="stat-bar"><div class="stat-bar__fill" [style.width.%]="pct(p.hp)"></div></div>
+          <span class="stat-value">{{ p.hp }}</span>
+        </li>
+        <li class="stat-row">
+          <span class="stat-label">Ataque</span>
+          <div class="stat-bar"><div class="stat-bar__fill" [style.width.%]="pct(p.attack)"></div></div>
+          <span class="stat-value">{{ p.attack }}</span>
+        </li>
+        <li class="stat-row">
+          <span class="stat-label">Defesa</span>
+          <div class="stat-bar"><div class="stat-bar__fill" [style.width.%]="pct(p.defense)"></div></div>
+          <span class="stat-value">{{ p.defense }}</span>
+        </li>
+      </ul>
+    </article>
   </div>
-
-  <!-- Estado vazio -->
-  <div class="empty" *ngIf="!loading() && filteredPokemon().length === 0">
-    Nenhum Pokémon encontrado com os filtros selecionados.
-  </div>
-
-  <!-- Grid de Pokémon -->
-  <div class="pokemon-grid" *ngIf="!loading() && filteredPokemon().length > 0">
-    <div class="pokemon-grid__container">
-      <article
-        *ngFor="let pokemon of filteredPokemon()"
-        class="pokemon-card"
-        [attr.data-types]="pokemon.types.join(' ')"
-      >
-        <!-- Cabeçalho do card com ID e badges de tipo -->
-        <div class="pokemon-card__header">
-          <span class="pokemon-id">{{ formatId(pokemon.id) }}</span>
-          <div class="pokemon-header-right">
-            <div class="pokemon-types--top">
-              <span
-                *ngFor="let type of pokemon.types"
-                class="type-badge"
-                [attr.data-type]="type.toLowerCase()"
-              >
-                {{ type }}
-              </span>
-            </div>
-            <!-- Ações: favorito e equipe de batalha -->
-            <div class="pokemon-actions">
-              <button
-                type="button"
-                class="action-btn favorite-btn"
-                [class.active]="isFavorite(pokemon.id)"
-                (click)="onToggleFavorite(pokemon)"
-                [title]="isFavorite(pokemon.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
-              >
-                ♥
-              </button>
-              <button
-                type="button"
-                class="action-btn team-btn"
-                [class.active]="isInTeam(pokemon.id)"
-                (click)="onToggleTeam(pokemon)"
-                [title]="isInTeam(pokemon.id) ? 'Remover da equipe' : 'Adicionar à equipe'"
-              >
-                ⚔
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Imagem do Pokémon -->
-        <div class="pokemon-card__image">
-          <img
-            [src]="pokemon.sprite || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + pokemon.id + '.png'"
-            [alt]="'Sprite de ' + formatName(pokemon.name)"
-            loading="lazy"
-          />
-        </div>
-
-        <!-- Nome do Pokémon -->
-        <div class="pokemon-card__info">
-          <h3 class="pokemon-card__name">{{ formatName(pokemon.name) }}</h3>
-        </div>
-
-        <!-- Atributos -->
-        <div class="pokemon-card__stats" *ngIf="pokemon.stats">
-          <div class="stat-row">
-            <span class="stat-label">HP</span>
-            <div class="stat-bar">
-              <div
-                class="stat-bar__fill"
-                [style.width]="statWidth(pokemon.stats?.hp)"
-                [style.backgroundColor]="statColors.hp"
-              ></div>
-              <span class="stat-value">{{ pokemon.stats?.hp }}</span>
-            </div>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Ataque</span>
-            <div class="stat-bar">
-              <div
-                class="stat-bar__fill"
-                [style.width]="statWidth(pokemon.stats?.attack)"
-                [style.backgroundColor]="statColors.attack"
-              ></div>
-              <span class="stat-value">{{ pokemon.stats?.attack }}</span>
-            </div>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Defesa</span>
-            <div class="stat-bar">
-              <div
-                class="stat-bar__fill"
-                [style.width]="statWidth(pokemon.stats?.defense)"
-                [style.backgroundColor]="statColors.defense"
-              ></div>
-              <span class="stat-value">{{ pokemon.stats?.defense }}</span>
-            </div>
-          </div>
-        </div>
-      </article>
-    </div>
-  </div>
-
-  <!-- Paginação -->
-  <footer class="pagination" *ngIf="totalCount() > limit">
-    <button type="button" (click)="previousPage()" [disabled]="offset() === 0">
-      Anterior
-    </button>
-    <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
-    <button
-      type="button"
-      (click)="nextPage()"
-      [disabled]="offset() + limit >= totalCount()"
-    >
-      Próxima
-    </button>
-  </footer>
-</section>
+</main>

@@ -1,8 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-
+import { Component, inject, signal, computed, effect } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { FeedbackService } from '../../services/feedback.service';
 
@@ -13,147 +12,81 @@ import { FeedbackService } from '../../services/feedback.service';
   templateUrl: './password-reset.page.html',
   styleUrl: './password-reset.page.css'
 })
-export class PasswordResetPageComponent implements OnInit {
+export class PasswordResetPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
-  private readonly feedback = inject(FeedbackService);
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly feedback = inject(FeedbackService);
 
-  readonly loading = signal(false);
-  readonly mode = signal<'change' | 'request' | 'confirm'>('change');
-  readonly uid = signal<string | null>(null);
-  readonly token = signal<string | null>(null);
-
-  readonly changeForm = this.fb.nonNullable.group({
+  readonly form: FormGroup = this.fb.nonNullable.group({
     current_password: ['', [Validators.required]],
     new_password: ['', [Validators.required, Validators.minLength(8)]],
-    new_password_confirm: ['', [Validators.required]]
+    new_password_confirm: ['', [Validators.required]],
   });
 
-  readonly requestForm = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]]
+  // UI state
+  showCurrent = false;
+  showNew = false;
+  showConfirm = false;
+
+  readonly error = signal<string | null>(null);
+
+  // Força da senha (0–4)
+  readonly strength = computed(() => this.passwordStrength(this.form.get('new_password')!.value || ''));
+  readonly strengthLabel = computed(() => {
+    const s = this.strength();
+    return s <= 1 ? 'fraca' : s === 2 ? 'média' : s === 3 ? 'forte' : 'muito forte';
   });
 
-  readonly confirmForm = this.fb.nonNullable.group({
-    new_password: ['', [Validators.required, Validators.minLength(8)]],
-    new_password_confirm: ['', [Validators.required]]
-  });
-
-  readonly isAuthenticated = computed(() => this.auth.isAuthenticated());
-  readonly pageTitle = computed(() => {
-    switch (this.mode()) {
-      case 'request': return 'Redefinir Senha';
-      case 'confirm': return 'Nova Senha';
-      default: return 'Alterar Senha';
-    }
-  });
-
-  ngOnInit(): void {
-    const url = this.router.url;
-    const params = this.route.snapshot.paramMap;
-
-    if (url.includes('/password-reset')) {
-      const uid = params.get('uid');
-      const token = params.get('token');
-
-      if (uid && token) {
-        this.mode.set('confirm');
-        this.uid.set(uid);
-        this.token.set(token);
-      } else {
-        this.mode.set('request');
-      }
-    } else {
-      this.mode.set('change');
-    }
+  // Mismatch
+  mismatch = false;
+  constructor() {
+    effect(() => {
+      const np = this.form.get('new_password')!.value || '';
+      const cp = this.form.get('new_password_confirm')!.value || '';
+      this.mismatch = !!np && !!cp && np !== cp;
+    });
   }
 
-  submitChange(): void {
-    if (this.changeForm.invalid) {
-      this.changeForm.markAllAsTouched();
+  touched(ctrl: string): boolean {
+    const c = this.form.get(ctrl);
+    return !!c && (c.touched || c.dirty);
+  }
+
+  toggle(which: 'current' | 'new' | 'confirm'): void {
+    if (which === 'current') this.showCurrent = !this.showCurrent;
+    if (which === 'new') this.showNew = !this.showNew;
+    if (which === 'confirm') this.showConfirm = !this.showConfirm;
+  }
+
+  submit(): void {
+    if (this.form.invalid || this.mismatch) {
+      this.form.markAllAsTouched();
       return;
     }
+    const { current_password, new_password, new_password_confirm } = this.form.getRawValue();
 
-    const value = this.changeForm.getRawValue();
-    if (value.new_password !== value.new_password_confirm) {
-      this.feedback.notifyError('A nova senha e a confirmação devem ser iguais.');
-      return;
-    }
-
-    this.loading.set(true);
-    this.auth.changePassword(value).subscribe({
+    this.error.set(null);
+    this.auth.changePassword({ current_password, new_password, new_password_confirm }).subscribe({
       next: () => {
-        this.feedback.notifySuccess('Senha atualizada com sucesso.');
-        this.changeForm.reset();
-        this.loading.set(false);
+        this.feedback.notifySuccess('Senha alterada com sucesso!');
+        this.router.navigateByUrl('/');
       },
       error: (err) => {
-        const detail = err?.error?.detail ?? err?.error?.new_password?.[0] ?? 'Não foi possível alterar a senha.';
-        this.feedback.notifyError(detail);
-        this.loading.set(false);
+        const msg = err?.error?.detail || 'Não foi possível alterar a senha.';
+        this.error.set(msg);
+        this.feedback.notifyError(msg);
       }
     });
   }
 
-  submitRequest(): void {
-    if (this.requestForm.invalid) {
-      this.requestForm.markAllAsTouched();
-      return;
-    }
-
-    const email = this.requestForm.getRawValue().email;
-    this.loading.set(true);
-
-    this.auth.requestPasswordReset(email).subscribe({
-      next: (response) => {
-        this.feedback.notifySuccess(response.detail);
-        this.requestForm.reset();
-        this.loading.set(false);
-      },
-      error: (err) => {
-        const detail = err?.error?.email?.[0] ?? err?.error?.detail ?? 'Não foi possível enviar o e-mail.';
-        this.feedback.notifyError(detail);
-        this.loading.set(false);
-      }
-    });
-  }
-
-  submitConfirm(): void {
-    if (this.confirmForm.invalid) {
-      this.confirmForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.confirmForm.getRawValue();
-    if (value.new_password !== value.new_password_confirm) {
-      this.feedback.notifyError('A nova senha e a confirmação devem ser iguais.');
-      return;
-    }
-
-    const uid = this.uid();
-    const token = this.token();
-    if (!uid || !token) {
-      this.feedback.notifyError('Link de redefinição inválido.');
-      return;
-    }
-
-    this.loading.set(true);
-    this.auth.confirmPasswordReset({
-      uid,
-      token,
-      new_password: value.new_password,
-      new_password_confirm: value.new_password_confirm
-    }).subscribe({
-      next: (response) => {
-        this.feedback.notifySuccess(response.detail);
-        this.router.navigate(['/login']);
-      },
-      error: (err) => {
-        const detail = err?.error?.new_password?.[0] ?? err?.error?.token?.[0] ?? err?.error?.uid?.[0] ?? err?.error?.detail ?? 'Não foi possível redefinir a senha.';
-        this.feedback.notifyError(detail);
-        this.loading.set(false);
-      }
-    });
+  private passwordStrength(value: string): number {
+    let score = 0;
+    if (!value) return score;
+    if (value.length >= 8) score++;
+    if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score++;
+    if (/\d/.test(value)) score++;
+    if (/[^A-Za-z0-9]/.test(value)) score++;
+    return Math.min(score, 4);
   }
 }

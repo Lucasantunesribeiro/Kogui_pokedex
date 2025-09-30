@@ -1,17 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { FeedbackService } from '../../services/feedback.service';
-
-interface CreateUserPayload {
-  username: string;
-  email?: string;
-  password: string;
-  password_confirm: string;
-  is_staff: boolean;
-}
 
 @Component({
   selector: 'app-admin-users-page',
@@ -20,154 +11,144 @@ interface CreateUserPayload {
   templateUrl: './admin-users.page.html',
   styleUrl: './admin-users.page.css'
 })
-export class AdminUsersPageComponent implements OnInit {
+export class AdminUsersPageComponent {
   private readonly auth = inject(AuthService);
-  private readonly feedback = inject(FeedbackService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FeedbackService);
 
-  readonly loading = signal(false);
-  readonly actionLoading = signal(false);
-  readonly users = signal<UserProfile[]>([]);
-  readonly showCreateForm = signal(false);
-  readonly editingUser = signal<UserProfile | null>(null);
+  users = signal<UserProfile[]>([]);
+  loading = signal(false);
+  resetRow = signal<number | null>(null);
 
-  readonly createForm = this.fb.nonNullable.group({
-    username: ['', [Validators.required, Validators.minLength(3)]],
-    email: ['', [Validators.email]],
+  createForm: FormGroup = this.fb.nonNullable.group({
+    username: ['', [Validators.required]],
+    email: [''],
     password: ['', [Validators.required, Validators.minLength(8)]],
     password_confirm: ['', [Validators.required]],
-    is_staff: [false]
+    is_staff: [false],
   });
 
-  readonly editForm = this.fb.nonNullable.group({
-    username: ['', [Validators.required, Validators.minLength(3)]],
-    email: ['', [Validators.email]],
-    is_staff: [false]
+  resetForm: FormGroup = this.fb.nonNullable.group({
+    new_password: ['', [Validators.required, Validators.minLength(8)]],
+    new_password_confirm: ['', [Validators.required]],
   });
 
   ngOnInit(): void {
-    this.loadUsers();
+    this.load();
   }
 
-  loadUsers(): void {
+  trackById = (_: number, u: UserProfile) => u.id;
+
+  isCurrentUser(userId: number): boolean {
+    const currentUser = this.auth.getCurrentUser();
+    return currentUser?.id === userId;
+  }
+
+  load(): void {
     this.loading.set(true);
+    console.log('[AdminUsers] Carregando usuários...');
     this.auth.listUsers().subscribe({
-      next: (users) => {
-        this.users.set(users);
+      next: (data: UserProfile[]) => {
+        console.log('[AdminUsers] Resposta recebida:', data);
+        const users = Array.isArray(data) ? data : [];
+        console.log('[AdminUsers] Usuários processados:', users);
+        this.users.set([...users]);
+      },
+      error: (err: any) => {
+        console.error('[AdminUsers] Erro ao carregar usuários:', err);
+        console.error('[AdminUsers] Status:', err?.status);
+        console.error('[AdminUsers] Mensagem:', err?.error);
+        this.feedback.notifyError('Falha ao carregar usuários.');
+      },
+      complete: () => {
+        console.log('[AdminUsers] Requisição concluída');
         this.loading.set(false);
       },
-      error: (err) => {
-        this.loading.set(false);
-        const message = err?.error?.detail ?? 'Não foi possível carregar os usuários.';
-        this.feedback.notifyError(message);
-      }
     });
   }
 
-  toggleCreateForm(): void {
-    this.showCreateForm.set(!this.showCreateForm());
-    if (this.showCreateForm()) {
-      this.createForm.reset();
-      this.editingUser.set(null);
+  openReset(userId: number): void {
+    const currentUser = this.auth.getCurrentUser();
+    if (currentUser && currentUser.id === userId) {
+      this.feedback.notifyError('Não é possível redefinir sua própria senha por este painel. Use a opção "Alterar Senha" no menu.');
+      return;
     }
+    this.resetRow.set(userId);
+    this.resetForm.reset();
   }
 
-  startEditUser(user: UserProfile): void {
-    this.editingUser.set(user);
-    this.showCreateForm.set(false);
-    this.editForm.patchValue({
-      username: user.username,
-      email: user.email || '',
-      is_staff: user.is_staff
-    });
-  }
-
-  cancelEdit(): void {
-    this.editingUser.set(null);
-    this.editForm.reset();
+  closeReset(): void {
+    this.resetRow.set(null);
   }
 
   submitCreate(): void {
-    if (this.createForm.invalid) {
-      this.createForm.markAllAsTouched();
+    if (this.createForm.invalid) { this.createForm.markAllAsTouched(); return; }
+
+    const { password, password_confirm, ...rest } = this.createForm.getRawValue();
+    if (password !== password_confirm) {
+      this.feedback.notifyError('As senhas não conferem.');
       return;
     }
 
-    const value = this.createForm.getRawValue();
-    if (value.password !== value.password_confirm) {
-      this.feedback.notifyError('A senha e a confirmação devem ser iguais.');
-      return;
-    }
-
-    this.actionLoading.set(true);
-    this.auth.createUser(value).subscribe({
+    this.loading.set(true);
+    this.auth.createUser({ ...rest, password, password_confirm }).subscribe({
       next: () => {
-        this.feedback.notifySuccess('Usuário criado com sucesso.');
-        this.createForm.reset();
-        this.showCreateForm.set(false);
-        this.loadUsers();
-        this.actionLoading.set(false);
+        this.feedback.notifySuccess('Usuário criado.');
+        this.createForm.reset({ is_staff: false });
+        this.load();
       },
-      error: (err) => {
-        const detail = err?.error?.username?.[0] ?? err?.error?.email?.[0] ?? err?.error?.detail ?? 'Não foi possível criar o usuário.';
-        this.feedback.notifyError(detail);
-        this.actionLoading.set(false);
-      }
+      error: (err: any) => this.feedback.notifyError(err?.error?.detail || 'Falha ao criar usuário.'),
+      complete: () => this.loading.set(false),
     });
   }
 
-  submitEdit(): void {
-    const user = this.editingUser();
-    if (!user || this.editForm.invalid) {
-      this.editForm.markAllAsTouched();
-      return;
-    }
-
-    const value = this.editForm.getRawValue();
-    this.actionLoading.set(true);
-
-    this.auth.updateUser(user.id, value).subscribe({
+  toggleAdmin(u: UserProfile): void {
+    this.loading.set(true);
+    this.auth.updateUser(u.id, { is_staff: !u.is_staff }).subscribe({
       next: () => {
-        this.feedback.notifySuccess('Usuário atualizado com sucesso.');
-        this.editingUser.set(null);
-        this.editForm.reset();
-        this.loadUsers();
-        this.actionLoading.set(false);
+        this.feedback.notifySuccess('Perfil atualizado.');
+        // Atualiza local sem mais uma chamada:
+        this.users.set(this.users().map(x => x.id === u.id ? { ...x, is_staff: !u.is_staff } : x));
       },
-      error: (err) => {
-        const detail = err?.error?.username?.[0] ?? err?.error?.email?.[0] ?? err?.error?.detail ?? 'Não foi possível atualizar o usuário.';
-        this.feedback.notifyError(detail);
-        this.actionLoading.set(false);
-      }
+      error: () => this.feedback.notifyError('Falha ao atualizar perfil.'),
+      complete: () => this.loading.set(false),
     });
   }
 
-  deleteUser(user: UserProfile): void {
-    if (!confirm(`Tem certeza que deseja excluir o usuário "${user.username}"?`)) {
+  remove(u: UserProfile): void {
+    if (this.isCurrentUser(u.id)) {
+      this.feedback.notifyError('Não é possível excluir sua própria conta.');
       return;
     }
-
-    this.actionLoading.set(true);
-    this.auth.deleteUser(user.id).subscribe({
+    if (!confirm(`Remover usuário ${u.username}?`)) return;
+    this.loading.set(true);
+    this.auth.deleteUser(u.id).subscribe({
       next: () => {
-        this.feedback.notifySuccess('Usuário excluído com sucesso.');
-        this.loadUsers();
-        this.actionLoading.set(false);
+        this.feedback.notifySuccess('Usuário removido.');
+        this.users.set(this.users().filter(x => x.id !== u.id));
       },
-      error: (err) => {
-        const detail = err?.error?.detail ?? 'Não foi possível excluir o usuário.';
-        this.feedback.notifyError(detail);
-        this.actionLoading.set(false);
-      }
+      error: () => this.feedback.notifyError('Falha ao remover usuário.'),
+      complete: () => this.loading.set(false),
     });
   }
 
-  getCurrentUser(): UserProfile | null {
-    return this.auth.getCurrentUser();
-  }
+  submitReset(userId: number): void {
+    if (this.resetForm.invalid) { this.resetForm.markAllAsTouched(); return; }
 
-  canDeleteUser(user: UserProfile): boolean {
-    const currentUser = this.getCurrentUser();
-    return currentUser?.id !== user.id;
+    const payload = this.resetForm.getRawValue();
+    if (payload.new_password !== payload.new_password_confirm) {
+      this.feedback.notifyError('As senhas não conferem.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.auth.adminResetPassword(userId, payload).subscribe({
+      next: () => {
+        this.feedback.notifySuccess('Senha redefinida.');
+        this.closeReset();
+      },
+      error: () => this.feedback.notifyError('Falha ao redefinir senha.'),
+      complete: () => this.loading.set(false),
+    });
   }
 }

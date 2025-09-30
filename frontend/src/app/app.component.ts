@@ -29,7 +29,8 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     this.loadCounters();
 
-    if (this.auth.isAuthenticated() && !this.auth.getCurrentUser()) {
+    const currentUser = this.auth.getCurrentUser();
+    if (this.auth.isAuthenticated() && !currentUser) {
       this.auth.fetchCurrentUser().subscribe({
         error: () => this.auth.logout()
       });

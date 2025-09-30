@@ -13,25 +13,25 @@ export const adminGuard: CanActivateFn = () => {
     return false;
   }
 
-  if (authService.isAdminUser()) {
-    return true;
+  const currentUser = authService.getCurrentUser();
+  if (currentUser) {
+    if (authService.isAdminUser()) {
+      return true;
+    }
+    router.navigate(['/']);
+    return false;
   }
 
-  if (!authService.getCurrentUser()) {
-    return authService.fetchCurrentUser().pipe(
-      map(() => authService.isAdminUser()),
-      tap((isAdmin) => {
-        if (!isAdmin) {
-          router.navigate(['/']);
-        }
-      }),
-      catchError(() => {
+  return authService.fetchCurrentUser().pipe(
+    map(() => authService.isAdminUser()),
+    tap((isAdmin) => {
+      if (!isAdmin) {
         router.navigate(['/']);
-        return of(false);
-      })
-    );
-  }
-
-  router.navigate(['/']);
-  return false;
+      }
+    }),
+    catchError(() => {
+      router.navigate(['/']);
+      return of(false);
+    })
+  );
 };

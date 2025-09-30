@@ -3,9 +3,8 @@ set -e
 
 echo "=== Starting Kogui Pokédx API ==="
 
-# Wait for dependencies
-echo "Waiting for Redis..."
-timeout 60 bash -c 'until redis-cli -h redis ping; do sleep 1; done' || echo "⚠️ Redis timeout, continuing anyway"
+# Wait for dependencies (Redis not needed for this project)
+echo "Skipping Redis check - not configured"
 
 # Check Python path and environment
 echo "Python version: $(python --version)"

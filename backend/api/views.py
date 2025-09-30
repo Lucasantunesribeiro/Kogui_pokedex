@@ -25,6 +25,7 @@ class PokemonListView(APIView):
         filters = {
             "generation": params.get("generation"),
             "name": params.get("name"),
+            "type": params.get("type"),
             "limit": params.get("limit", 20),
             "offset": params.get("offset", 0),
         }
@@ -33,6 +34,7 @@ class PokemonListView(APIView):
             payload = list_pokemon(
                 generation=filters["generation"],
                 name=filters["name"],
+                type=filters["type"],
                 limit=filters["limit"],
                 offset=filters["offset"],
             )

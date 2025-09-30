@@ -89,35 +89,33 @@ input:focus {
   font-size: 0.85rem;
 }
 
-/* Estilo para links de redefinição e navegação entre formulários */
+/* Link "Esqueceu sua senha?" abaixo do formulário de login */
 .reset-link {
-  display: inline-block;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
+  text-align: center;
+  margin-top: -0.5rem;
+}
+
+.reset-link a {
   color: var(--brand-purple);
+  font-size: 0.85rem;
   text-decoration: underline;
   cursor: pointer;
 }
 
-.reset-link:hover {
-  text-decoration: none;
-}
-
-/* Botão secundário utilizado no modo de redefinição de senha */
+/* Botão secundário usado no formulário de reset */
 .secondary {
-  margin-top: 0.5rem;
   background: transparent;
-  color: var(--brand-purple);
   border: 1px solid var(--brand-purple);
+  color: var(--brand-purple);
   border-radius: 0.75rem;
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: transform 0.2s ease;
+  margin-top: 0.5rem;
 }
 
 .secondary:hover {
-  background: rgba(109, 40, 217, 0.1);
   transform: translateY(-2px);
 }

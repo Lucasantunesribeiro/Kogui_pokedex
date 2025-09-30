@@ -1,188 +1,121 @@
-<section class="admin-users" aria-labelledby="users-admin-title">
-  <header class="admin-users__header">
-    <div>
-      <h2 id="users-admin-title">Gestão de usuários</h2>
-      <p>Visualize os perfis cadastrados e acompanhe quem possui acessos administrativos à Pokédx.</p>
-    </div>
-    <div class="admin-users__actions">
-      <button type="button" class="btn-secondary" (click)="loadUsers()" [disabled]="loading()">
-        {{ loading() ? 'Atualizando...' : 'Atualizar lista' }}
-      </button>
-      <button type="button" class="btn-primary" (click)="toggleCreateForm()">
-        {{ showCreateForm() ? 'Cancelar' : 'Criar usuário' }}
-      </button>
-    </div>
-  </header>
+<section class="admin" aria-labelledby="users-title">
+  <div class="admin-card">
+    <header class="admin-header">
+      <h2 id="users-title">Gestão de usuários</h2>
+      <button type="button" class="ghost" (click)="load()" [disabled]="loading()">Recarregar</button>
+    </header>
 
-  <!-- Formulário de criação de usuário -->
-  <form *ngIf="showCreateForm()" [formGroup]="createForm" (ngSubmit)="submitCreate()" class="admin-users__form" novalidate>
-    <h3>Criar novo usuário</h3>
+    <!-- Criar novo usuário -->
+    <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="block" novalidate>
+      <h3>Novo usuário</h3>
+      <div class="grid">
+        <label>
+          Usuário
+          <input type="text" formControlName="username" required />
+        </label>
 
-    <div class="form-row">
-      <div class="form-group">
-        <label for="create_username">Nome de usuário</label>
-        <input
-          id="create_username"
-          type="text"
-          formControlName="username"
-          [class.invalid]="createForm.controls.username.invalid && createForm.controls.username.touched"
-          required
-        />
-        <small *ngIf="createForm.controls.username.invalid && createForm.controls.username.touched">
-          Nome de usuário deve ter pelo menos 3 caracteres.
-        </small>
+        <label>
+          E-mail
+          <input type="email" formControlName="email" />
+        </label>
+
+        <label>
+          Senha
+          <input type="password" formControlName="password" placeholder="mín. 8 caracteres" required />
+        </label>
+
+        <label>
+          Confirmar
+          <input type="password" formControlName="password_confirm" required />
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" formControlName="is_staff" />
+          <span>Admin</span>
+        </label>
       </div>
 
-      <div class="form-group">
-        <label for="create_email">E-mail (opcional)</label>
-        <input
-          id="create_email"
-          type="email"
-          formControlName="email"
-          [class.invalid]="createForm.controls.email.invalid && createForm.controls.email.touched"
-        />
-        <small *ngIf="createForm.controls.email.invalid && createForm.controls.email.touched">
-          Informe um e-mail válido.
-        </small>
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label for="create_password">Senha</label>
-        <input
-          id="create_password"
-          type="password"
-          formControlName="password"
-          [class.invalid]="createForm.controls.password.invalid && createForm.controls.password.touched"
-          required
-        />
-        <small *ngIf="createForm.controls.password.invalid && createForm.controls.password.touched">
-          Senha deve ter pelo menos 8 caracteres.
-        </small>
+      <div class="inline-errors" *ngIf="createForm.invalid && createForm.touched">
+        <p *ngIf="createForm.get('username')?.invalid">Informe um usuário.</p>
+        <p *ngIf="createForm.get('password')?.hasError('minlength')">Senha deve ter pelo menos 8 caracteres.</p>
       </div>
 
-      <div class="form-group">
-        <label for="create_password_confirm">Confirmar senha</label>
-        <input
-          id="create_password_confirm"
-          type="password"
-          formControlName="password_confirm"
-          [class.invalid]="createForm.controls.password_confirm.invalid && createForm.controls.password_confirm.touched"
-          required
-        />
-        <small *ngIf="createForm.controls.password_confirm.invalid && createForm.controls.password_confirm.touched">
-          Confirme a senha.
-        </small>
+      <div class="actions-row">
+        <button type="submit" class="primary" [disabled]="createForm.invalid || loading()">Criar</button>
+        <button type="button" class="ghost" (click)="createForm.reset({ is_staff: false })">Limpar</button>
       </div>
-    </div>
+    </form>
 
-    <div class="form-group">
-      <label class="checkbox-label">
-        <input
-          type="checkbox"
-          formControlName="is_staff"
-        />
-        <span class="checkbox-custom"></span>
-        Conceder privilégios de administrador
-      </label>
-    </div>
+    <!-- Lista de usuários -->
+    <div class="block">
+      <h3>Usuários</h3>
 
-    <div class="form-actions">
-      <button type="button" class="btn-secondary" (click)="toggleCreateForm()">Cancelar</button>
-      <button type="submit" class="btn-primary" [disabled]="actionLoading()">
-        {{ actionLoading() ? 'Criando...' : 'Criar usuário' }}
-      </button>
-    </div>
-  </form>
+      <ul class="table" role="table" aria-label="Tabela de usuários">
+        <li class="row header" role="row">
+          <span role="columnheader">Usuário</span>
+          <span role="columnheader">E-mail</span>
+          <span role="columnheader" class="center">Admin</span>
+          <span role="columnheader" class="right">Ações</span>
+        </li>
 
-  <ng-container *ngIf="!loading(); else loadingState">
-    <div *ngIf="users().length > 0; else emptyState" class="admin-users__table" role="table" aria-label="Tabela de usuários cadastrados">
-      <div class="admin-users__row admin-users__row--header" role="row">
-        <span role="columnheader">Usuário</span>
-        <span role="columnheader">E-mail</span>
-        <span role="columnheader">Administrador</span>
-        <span role="columnheader">Criado em</span>
-        <span role="columnheader">Ações</span>
-      </div>
+        <li class="row" role="row" *ngFor="let u of users(); trackBy: trackById">
+          <span role="cell">{{ u.username }}</span>
+          <span role="cell">{{ u.email || '—' }}</span>
 
-      <!-- Linha de edição inline -->
-      <div *ngIf="editingUser() as user" class="admin-users__row admin-users__row--edit" role="row">
-        <form [formGroup]="editForm" (ngSubmit)="submitEdit()" class="edit-form">
-          <span role="cell">
-            <input
-              type="text"
-              formControlName="username"
-              placeholder="Nome de usuário"
-              [class.invalid]="editForm.controls.username.invalid && editForm.controls.username.touched"
-            />
-          </span>
-          <span role="cell">
-            <input
-              type="email"
-              formControlName="email"
-              placeholder="E-mail"
-              [class.invalid]="editForm.controls.email.invalid && editForm.controls.email.touched"
-            />
-          </span>
-          <span role="cell">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="is_staff" />
-              <span class="checkbox-custom"></span>
-              Admin
-            </label>
-          </span>
-          <span role="cell">{{ user.date_joined | date: 'dd/MM/yyyy HH:mm' }}</span>
-          <span role="cell" class="table-actions">
-            <button type="submit" class="btn-icon btn-success" [disabled]="actionLoading()" title="Salvar">
-              ✓
-            </button>
-            <button type="button" class="btn-icon btn-secondary" (click)="cancelEdit()" title="Cancelar">
-              ✕
+          <span role="cell" class="center">
+            <button type="button" class="chip" [class.on]="u.is_staff" (click)="toggleAdmin(u)">
+              {{ u.is_staff ? 'Sim' : 'Não' }}
             </button>
           </span>
-        </form>
-      </div>
 
-      <div *ngFor="let user of users()" class="admin-users__row" role="row" [class.editing]="editingUser()?.id === user.id">
-        <ng-container *ngIf="editingUser()?.id !== user.id">
-          <span role="cell">{{ user.username }}</span>
-          <span role="cell">{{ user.email || '—' }}</span>
-          <span role="cell">
-            <span class="badge" [class.badge-admin]="user.is_staff">
-              {{ user.is_staff ? 'Sim' : 'Não' }}
-            </span>
-          </span>
-          <span role="cell">{{ user.date_joined | date: 'dd/MM/yyyy HH:mm' }}</span>
-          <span role="cell" class="table-actions">
-            <button type="button" class="btn-icon btn-primary" (click)="startEditUser(user)" title="Editar usuário">
-              ✏️
+          <span role="cell" class="right actions">
+            <button
+              type="button"
+              (click)="openReset(u.id)"
+              [disabled]="isCurrentUser(u.id)"
+              [title]="isCurrentUser(u.id) ? 'Não é possível redefinir sua própria senha por este painel' : 'Redefinir senha do usuário'"
+            >
+              Reset senha
             </button>
             <button
               type="button"
-              class="btn-icon btn-danger"
-              (click)="deleteUser(user)"
-              [disabled]="!canDeleteUser(user) || actionLoading()"
-              [title]="canDeleteUser(user) ? 'Excluir usuário' : 'Não é possível excluir próprio usuário'"
+              class="danger"
+              (click)="remove(u)"
+              [disabled]="isCurrentUser(u.id)"
+              [title]="isCurrentUser(u.id) ? 'Não é possível excluir sua própria conta' : 'Excluir usuário'"
             >
-              🗑️
+              Excluir
             </button>
           </span>
-        </ng-container>
-      </div>
-    </div>
-  </ng-container>
 
-  <ng-template #loadingState>
-    <div class="admin-users__status">
-      <div class="spinner"></div>
-      <p>Carregando usuários...</p>
-    </div>
-  </ng-template>
+          <!-- Caixa de reset inline -->
+          <div class="reset-box" *ngIf="resetRow() === u.id">
+            <form [formGroup]="resetForm" (ngSubmit)="submitReset(u.id)" novalidate>
+              <div class="grid-compact">
+                <label>
+                  Nova senha
+                  <input type="password" formControlName="new_password" placeholder="mín. 8 caracteres" required />
+                </label>
+                <label>
+                  Confirmar
+                  <input type="password" formControlName="new_password_confirm" required />
+                </label>
+              </div>
 
-  <ng-template #emptyState>
-    <div class="admin-users__status">
-      <p>Nenhum usuário cadastrado encontrado.</p>
+              <div class="inline-errors" *ngIf="resetForm.invalid && resetForm.touched">
+                <p *ngIf="resetForm.get('new_password')?.hasError('minlength')">Senha deve ter pelo menos 8 caracteres.</p>
+              </div>
+
+              <div class="actions-row">
+                <button type="submit" class="primary" [disabled]="resetForm.invalid || loading()">Salvar</button>
+                <button type="button" class="ghost" (click)="closeReset()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </li>
+
+        <li class="row empty" *ngIf="!users().length && !loading()">Nenhum usuário encontrado.</li>
+      </ul>
     </div>
-  </ng-template>
+  </div>
 </section>

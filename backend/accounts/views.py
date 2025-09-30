@@ -3,20 +3,18 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.generics import (
-    CreateAPIView,
-    DestroyAPIView,
-    ListAPIView,
-    RetrieveUpdateAPIView,
+    ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import (
-    AdminUserSerializer,
+    AdminCreateUserSerializer,
+    AdminPasswordResetSerializer,
+    AdminUserUpdateSerializer,
     PasswordChangeSerializer,
-    PasswordResetSerializer,
-    PasswordResetConfirmSerializer,
     RegisterSerializer,
     UserSerializer,
 )
@@ -45,76 +43,41 @@ class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        serializer = PasswordChangeSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"detail": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)
 
 
-class UserListView(ListAPIView):
-    serializer_class = UserSerializer
+class UserListCreateView(ListCreateAPIView):
     permission_classes = [IsAdminUser]
     queryset = User.objects.all().order_by("username")
+    serializer_class = AdminCreateUserSerializer
+
+    def get_serializer_class(self):
+        return AdminCreateUserSerializer if self.request.method == "POST" else UserSerializer
 
 
-class AdminUserCreateView(CreateAPIView):
-    serializer_class = AdminUserSerializer
+class UserDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
     queryset = User.objects.all()
+    serializer_class = AdminUserUpdateSerializer
 
-
-class AdminUserDetailView(RetrieveUpdateAPIView):
-    serializer_class = AdminUserSerializer
-    permission_classes = [IsAdminUser]
-    queryset = User.objects.all()
-
-    def patch(self, request, *args, **kwargs):
-        return self.partial_update(request, *args, **kwargs)
-
-
-class AdminUserDeleteView(DestroyAPIView):
-    serializer_class = AdminUserSerializer
-    permission_classes = [IsAdminUser]
-    queryset = User.objects.all()
-
-    def delete(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         instance = self.get_object()
-
-        # Não permitir que admin delete a si mesmo
-        if instance == request.user:
-            return Response(
-                {"detail": "Você não pode deletar sua própria conta."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Não permitir deletar o último superusuário
-        if instance.is_superuser and User.objects.filter(is_superuser=True).count() == 1:
-            return Response(
-                {"detail": "Não é possível deletar o último superusuário."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(UserSerializer(instance).data)
 
 
-class PasswordResetView(APIView):
-    permission_classes = [AllowAny]
+class AdminPasswordResetView(APIView):
+    permission_classes = [IsAdminUser]
 
-    def post(self, request, *args, **kwargs):
-        serializer = PasswordResetSerializer(data=request.data)
+    def post(self, request, user_id: int, *args, **kwargs):
+        try:
+            target = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AdminPasswordResetSerializer(data=request.data, context={"user": target})
         serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response(result, status=status.HTTP_200_OK)
-
-
-class PasswordResetConfirmView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response(result, status=status.HTTP_200_OK)
+        serializer.save()
+        return Response({"detail": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)

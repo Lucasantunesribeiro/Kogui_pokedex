@@ -19,12 +19,11 @@
       </button>
     </div>
 
+    <!-- Título dinâmico conforme o modo selecionado -->
     <h2 id="auth-title">
-      <!-- Título dinâmico baseado no modo -->
-      {{ mode() === 'register' ? 'Criar nova conta' : mode() === 'reset' ? 'Redefinir senha' : 'Acesse sua conta' }}
+      {{ mode() === 'login' ? 'Acesse sua conta' : 'Crie uma nova conta' }}
     </h2>
 
-    <!-- Formulário de login -->
     <form *ngIf="mode() === 'login'" [formGroup]="loginForm" (ngSubmit)="submitLogin()" novalidate>
       <label>
         Usuário
@@ -47,11 +46,13 @@
       </div>
 
       <button type="submit" class="primary">Entrar</button>
-      <!-- Link para redefinir senha -->
-      <a href="#" class="reset-link" (click)="switchMode('reset'); $event.preventDefault()">Esqueceu sua senha?</a>
     </form>
 
-    <!-- Formulário de registro -->
+    <!-- Link para página de redefinição de senha -->
+    <div class="reset-link" *ngIf="mode() === 'login'">
+      <a routerLink="/password-reset">Esqueceu sua senha?</a>
+    </div>
+
     <form *ngIf="mode() === 'register'" [formGroup]="registerForm" (ngSubmit)="submitRegister()" novalidate>
       <div class="error" *ngIf="registerErrors().length">
         <p *ngFor="let message of registerErrors()">{{ message }}</p>
@@ -90,24 +91,7 @@
       </div>
 
       <button type="submit" class="primary">Cadastrar</button>
-      <!-- Link para voltar ao login -->
-      <a href="#" class="reset-link" (click)="switchMode('login'); $event.preventDefault()">Já possui conta? Entrar</a>
     </form>
 
-    <!-- Formulário de redefinição de senha -->
-    <form *ngIf="mode() === 'reset'" [formGroup]="resetForm" (ngSubmit)="submitReset()" novalidate>
-      <label>
-        E‑mail
-        <input type="email" formControlName="email" placeholder="seu@exemplo.com" required />
-      </label>
-      <div class="error" *ngIf="resetForm.get('email')?.touched && resetForm.get('email')?.invalid">
-        Informe um e‑mail válido.
-      </div>
-      <div class="error" *ngIf="resetError() as resetMessage">
-        {{ resetMessage }}
-      </div>
-      <button type="submit" class="primary">Enviar link de redefinição</button>
-      <button type="button" class="secondary" (click)="switchMode('login')">Voltar ao login</button>
-    </form>
   </div>
 </section>

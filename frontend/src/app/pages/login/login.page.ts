@@ -19,9 +19,7 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
 
-  // Modo atual da tela de autenticação.
-  // Agora suporta três modos: login, register e reset (redefinição de senha).
-  readonly mode = signal<'login' | 'register' | 'reset'>('login');
+  readonly mode = signal<'login' | 'register'>('login');
 
   readonly loginForm: FormGroup = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
@@ -31,13 +29,6 @@ export class LoginPageComponent {
   readonly loginError = signal<string | null>(null);
   readonly registerErrors = signal<string[]>([]);
 
-  // Estado para o formulário de redefinição de senha. Contém apenas o e‑mail.
-  readonly resetForm: FormGroup = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]]
-  });
-  // Mensagem de erro para o reset, se houver.
-  readonly resetError = signal<string | null>(null);
-
   readonly registerForm: FormGroup = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
     email: ['', [Validators.email]],
@@ -46,19 +37,7 @@ export class LoginPageComponent {
   });
 
   switchMode(mode: 'login' | 'register'): void {
-    // Resetamos mensagens de erro quando mudamos de modo
-    this.loginError.set(null);
-    this.registerErrors.set([]);
-    this.resetError.set(null);
-    // Reseta formulários para estado inicial ao alternar modos
-    if (mode === 'login') {
-      this.loginForm.reset();
-    } else if (mode === 'register') {
-      this.registerForm.reset();
-    } else if (mode === 'reset') {
-      this.resetForm.reset();
-    }
-    this.mode.set(mode as any);
+    this.mode.set(mode);
   }
 
   submitLogin(): void {
@@ -78,31 +57,6 @@ export class LoginPageComponent {
       error: (err) => {
         const message = err?.error?.detail ?? 'Não foi possível realizar o login.';
         this.loginError.set(message);
-        this.feedback.notifyError(message);
-      }
-    });
-  }
-
-  /**
-   * Envia um pedido de redefinição de senha.
-   * Valida o e‑mail e chama o AuthService; exibe mensagens via FeedbackService.
-   */
-  submitReset(): void {
-    if (this.resetForm.invalid) {
-      this.resetForm.markAllAsTouched();
-      return;
-    }
-    this.resetError.set(null);
-    const { email } = this.resetForm.getRawValue();
-    // O AuthService deve implementar requestPasswordReset() que retorna um Observable
-    (this.auth as any).requestPasswordReset({ email }).subscribe({
-      next: () => {
-        this.feedback.notifySuccess('E‑mail de redefinição enviado! Verifique sua caixa de entrada.');
-        this.switchMode('login');
-      },
-      error: (err: any) => {
-        const message = err?.error?.detail ?? 'Não foi possível enviar o e‑mail de redefinição.';
-        this.resetError.set(message);
         this.feedback.notifyError(message);
       }
     });
