@@ -3,25 +3,35 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment as env } from '../../environments/environment';
 
+export interface PokemonDetail {
+  id: number;
+  name: string;
+  types: string[];
+  sprite: string | null;
+  stats: { hp: number; attack: number; defense: number };
+}
+
 export interface PokemonListItem {
   id: number;
   name: string;
-  image: string | null;
   types: string[];
+  sprite: string | null;
+  stats: { hp: number; attack: number; defense: number };
+  is_favorite?: boolean;
+  is_in_team?: boolean;
 }
-
-// Alias para compatibilidade com código existente
-export type Pokemon = PokemonListItem;
 
 export interface FavoriteItem {
   id: number;
   pokemon_id: number;
+  pokemon?: PokemonDetail | null;
 }
 
 export interface TeamSlotItem {
   id: number;
   slot: number;
   pokemon_id: number;
+  pokemon?: PokemonDetail | null;
 }
 
 export interface UserItem {
@@ -37,14 +47,22 @@ export class ApiService {
   private readonly http = inject(HttpClient);
 
   // ===== POKÉMON (público) =====
-  listPokemon(params: { generation?: string | null; name?: string | null; type?: string | null; limit?: number; offset?: number }) {
+  listPokemon(params: {
+    generation?: string | null;
+    name?: string | null;
+    type?: string | null;
+    limit?: number;
+    offset?: number;
+  }): Observable<{ results: PokemonListItem[]; count: number }> {
     const q = new URLSearchParams();
     if (params.generation) q.set('generation', String(params.generation));
     if (params.name) q.set('name', String(params.name));
     if (params.type) q.set('type', String(params.type));
-    q.set('limit', String(params.limit ?? 12));
+    q.set('limit', String(params.limit ?? 20));
     q.set('offset', String(params.offset ?? 0));
-    return this.http.get<{ results: PokemonListItem[]; count: number }>(`${env.apiBase}/api/pokemon/?${q.toString()}`);
+    return this.http.get<{ results: PokemonListItem[]; count: number }>(
+      `${env.apiBase}/api/pokemon/?${q.toString()}`
+    );
   }
 
   // ===== FAVORITOS =====
@@ -71,29 +89,30 @@ export class ApiService {
 
   // ===== ADMIN: USUÁRIOS =====
   listUsers(): Observable<UserItem[]> {
-    return this.http.get<UserItem[]>(`${env.apiBase}/auth/users/`);
-  }
-
-  createUser(payload: { username: string; email?: string | null; password: string; password_confirm?: string | null }): Observable<UserItem> {
     return this.http
-      .post<UserItem>(`${env.apiBase}/auth/register/`, {
-        username: payload.username,
-        password: payload.password,
-        ...(payload.password_confirm ? { password_confirm: payload.password_confirm } : {}),
-        ...(payload.email ? { email: payload.email } : {}),
-      })
-      .pipe(
-        // o endpoint de registro retorna o usuário criado
-        map((user) => user as UserItem)
-      );
+      .get<{ count: number; results: UserItem[] }>(`${env.apiBase}/auth/users/`)
+      .pipe(map((r) => r.results ?? []));
   }
 
-  /** Reset administrativo (sem e-mail) — usado pelo painel de admin */
-  adminResetPassword(username: string, new_password: string, new_password_confirm: string) {
-    return this.http.post<{ detail: string }>(`${env.apiBase}/auth/password/admin-reset/`, {
-      username,
-      new_password,
-      new_password_confirm,
-    });
+  createUser(payload: {
+    username: string;
+    email?: string | null;
+    password: string;
+    password_confirm?: string | null;
+    is_staff?: boolean;
+  }): Observable<UserItem> {
+    // Usa o endpoint admin que suporta is_staff
+    return this.http.post<UserItem>(`${env.apiBase}/auth/users/`, payload);
+  }
+
+  // BUG-03 corrigido: usa o endpoint correto com userId
+  adminResetPassword(
+    userId: number,
+    payload: { new_password: string; new_password_confirm: string }
+  ): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(
+      `${env.apiBase}/auth/users/${userId}/reset-password/`,
+      payload
+    );
   }
 }

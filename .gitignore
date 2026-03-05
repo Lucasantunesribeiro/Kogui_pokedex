@@ -91,3 +91,7 @@ pids
 # Cache
 .cache/
 .parcel-cache/
+
+# Lambda build artifacts
+backend/package/
+backend/kogui-backend.zip

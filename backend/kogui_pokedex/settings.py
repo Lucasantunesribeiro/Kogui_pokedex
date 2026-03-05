@@ -5,12 +5,27 @@ from datetime import timedelta
 from pathlib import Path
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-secret")
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()] or ["*"]
+# SEC-02: fail-fast em produção se SECRET_KEY não estiver definida
+_secret_key = os.environ.get("DJANGO_SECRET_KEY")
+if not _secret_key:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "Defina a variável de ambiente DJANGO_SECRET_KEY em produção."
+        )
+    _secret_key = "insecure-dev-only-key-do-not-use-in-production"
+SECRET_KEY = _secret_key
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if h.strip()
+] or ["127.0.0.1", "localhost"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -27,10 +42,14 @@ INSTALLED_APPS = [
     "accounts",
     "api",
 ]
+
+# DT-07: SecurityMiddleware o mais cedo possível; WhiteNoise logo após
+# CorsMiddleware deve ficar antes de SecurityMiddleware (requisito do django-cors-headers)
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "kogui_pokedex.middleware.RequestIDMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "kogui_pokedex.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -59,12 +78,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "kogui_pokedex.wsgi.application"
 ASGI_APPLICATION = "kogui_pokedex.asgi.application"
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+
+# Suporte a PostgreSQL via DATABASE_URL ou variáveis individuais
+_db_engine = os.environ.get("DB_ENGINE", "sqlite3")
+if _db_engine == "postgresql":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("DB_NAME", "kogui"),
+            "USER": os.environ.get("DB_USER", "kogui"),
+            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+            # A02: forçar SSL em produção para criptografar dados em trânsito
+            "OPTIONS": {} if DEBUG else {"sslmode": "require"},
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -80,7 +116,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -91,6 +130,16 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # SEC-06: rate limiting para proteção de brute force
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "120/hour",
+        "user": "600/hour",
+        "login": "10/minute",
+    },
 }
 
 SIMPLE_JWT = {
@@ -153,31 +202,30 @@ LOGGING = {
     },
 }
 
-CORS_ALLOW_ALL_ORIGINS = True  # Para desenvolvimento
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "http://localhost:80",
-    "http://frontend:80",
-    "http://api:8000",
-]
+# SEC-01: CORS restrito a origens conhecidas (CORS_ALLOW_ALL_ORIGINS removido)
+_cors_origins_env = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:4200,http://localhost:80,http://127.0.0.1:4200",
+)
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 CORS_ALLOWED_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
-CSRF_TRUSTED_ORIGINS = ["http://localhost:4200"]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]

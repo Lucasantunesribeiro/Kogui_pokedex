@@ -31,14 +31,15 @@ class PasswordResetTests(APITestCase):
         self.assertIn("enviado", response.data["detail"])
 
     def test_password_reset_request_invalid_email(self) -> None:
-        """Testa solicitação de reset com email inexistente"""
+        """Email inexistente retorna 200 silencioso (evita account enumeration - OWASP A01)"""
         url = reverse("accounts:password_reset")
         payload = {"email": "inexistente@example.com"}
 
         response = self.client.post(url, payload, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", response.data)
+        # Não revelamos se o email existe: sempre 200 para prevenir enumeração de contas
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
 
     def test_password_reset_confirm_valid_token(self) -> None:
         """Testa confirmação de reset com token válido"""

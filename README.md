@@ -1,8 +1,8 @@
 # 🔥 Kogui Pokédx - Desafio Técnico Fullstack
 
-> **TODOS os requisitos implementados com excelência técnica** | Django 5.0 + Angular 17 + Docker + JWT
+> **TODOS os requisitos implementados com excelência técnica** | Django 5.0 + Angular 17 + Docker + JWT + AWS Free Tier
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)]() [![Django](https://img.shields.io/badge/Django-5.0-092E20?logo=django)]() [![Angular](https://img.shields.io/badge/Angular-17-DD0031?logo=angular)]() [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)]()
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)]() [![Django](https://img.shields.io/badge/Django-5.0-092E20?logo=django)]() [![Angular](https://img.shields.io/badge/Angular-17-DD0031?logo=angular)]() [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)]() [![AWS](https://img.shields.io/badge/AWS-Free%20Tier-FF9900?logo=amazonaws)]()
 
 ## 🏆 **DESAFIO KOGUI - 100% COMPLETO**
 
@@ -64,6 +64,24 @@ Implementação **profissional** do desafio técnico Kogui com **arquitetura mod
 
 ---
 
+## 🌐 **Acesso em Produção (AWS)**
+
+| Serviço | URL |
+|---------|-----|
+| **Frontend** | https://d2oea116tz18d3.cloudfront.net |
+| **API Backend** | https://lspcm0a9zj.execute-api.us-east-1.amazonaws.com |
+| **Health Check** | https://lspcm0a9zj.execute-api.us-east-1.amazonaws.com/health/ |
+
+### **🔑 Credenciais de Teste (Produção)**
+```
+Usuário: admin
+Senha:   Admin@kogui2026
+```
+
+> **Infraestrutura:** S3 + CloudFront (frontend) · Lambda + API Gateway HTTP API (backend) · RDS PostgreSQL 15.12 t3.micro (banco de dados)
+
+---
+
 ## ⚡ **Quick Start**
 
 ### **🐳 Docker (Recomendado)**
@@ -82,10 +100,10 @@ Backend:  http://localhost:8000
 API Docs: http://localhost:8000/api/docs/
 ```
 
-### **📱 Credenciais de Teste**
+### **📱 Credenciais de Teste (Local)**
 ```
 Admin Django: admin / admin123
-URL Admin: http://localhost:8000/admin/
+URL Admin:    http://localhost:8000/admin/
 ```
 
 ### **💻 Local Development**
@@ -218,16 +236,20 @@ curl -X POST http://localhost:8000/api/team/set/ \
 
 ---
 
-## 🔒 **Segurança Implementada**
+## 🔒 **Segurança — OWASP Top 10**
 
-- ✅ **JWT Tokens** com rotação automática e blacklist
-- ✅ **CORS** configurado adequadamente
-- ✅ **Rate Limiting** para APIs externas
-- ✅ **Input Validation** em todos os endpoints
-- ✅ **Error Handling** sem exposição de dados sensíveis
-- ✅ **HTTPS Ready** para produção
-- ✅ **Request ID Tracking** para auditoria
-- ✅ **Cache Security** para PokéAPI fair use
+| # | Categoria OWASP | Status | Implementação |
+|---|----------------|--------|---------------|
+| A01 | Broken Access Control | ✅ | `get_queryset` filtra por `request.user`; `IsAdminUser` em rotas admin; sem account enumeration no reset de senha |
+| A02 | Cryptographic Failures | ✅ | PBKDF2 para senhas; JWT HS256; SSL forçado na conexão RDS em produção |
+| A03 | Injection | ✅ | ORM Django com queries parametrizadas; sem SQL raw; `PositiveIntegerField` valida pokemon_id; Angular escapa templates |
+| A04 | Insecure Design | ✅ | Rate limiting 120req/h (anon), 600req/h (user), **10req/min no login** (throttle dedicado) |
+| A05 | Security Misconfiguration | ✅ | `DEBUG=False` em produção; `ALLOWED_HOSTS` restrito; Swagger/Redoc apenas em `DEBUG=True` |
+| A06 | Vulnerable Components | ✅ | Dependências recentes: Django 5.0.4, DRF 3.15, SimpleJWT 5.3 |
+| A07 | Auth Failures | ✅ | JWT com rotação + blacklist; validadores de senha Django; `ScopedRateThrottle` no login |
+| A08 | Data Integrity | ✅ | `UniqueConstraint` e `CheckConstraint` no DB; validação dupla serializer + DB |
+| A09 | Logging & Monitoring | ✅ | JSON estruturado com request ID; todos os requests/responses logados via middleware |
+| A10 | SSRF | ✅ | URL PokéAPI hardcoded; `generation` convertido para `int` antes de entrar na URL |
 
 ---
 

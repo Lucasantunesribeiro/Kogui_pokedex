@@ -219,7 +219,14 @@ def list_pokemon(
                     if len(filtered_results) >= offset_value + limit_value:
                         break
                 except Exception:
-                    # Skip em caso de erro na PokéAPI
+                    logger.warning(
+                        "pokeapi.type_filter.skip",
+                        extra={
+                            "event": "pokeapi.type_filter.skip",
+                            "extra_data": {"name": item.get("name")},
+                        },
+                        exc_info=True,
+                    )
                     continue
 
             current_offset += batch_size

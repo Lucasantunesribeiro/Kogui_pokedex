@@ -15,6 +15,8 @@ from .serializers import (
     AdminPasswordResetSerializer,
     AdminUserUpdateSerializer,
     PasswordChangeSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetSerializer,
     RegisterSerializer,
     UserSerializer,
 )
@@ -49,13 +51,48 @@ class PasswordChangeView(APIView):
         return Response({"detail": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)
 
 
+class PasswordResetView(APIView):
+    """Solicita reset de senha via email (token-based)."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"detail": "E-mail de redefinição enviado com sucesso."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """Confirma o reset de senha com uid + token."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"detail": "Senha redefinida com sucesso."},
+            status=status.HTTP_200_OK,
+        )
+
+
 class UserListCreateView(ListCreateAPIView):
     permission_classes = [IsAdminUser]
     queryset = User.objects.all().order_by("username")
-    serializer_class = AdminCreateUserSerializer
+    # Sem paginação para retornar lista direta
+    pagination_class = None
 
     def get_serializer_class(self):
         return AdminCreateUserSerializer if self.request.method == "POST" else UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = AdminCreateUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):
@@ -66,6 +103,25 @@ class UserDetailView(RetrieveUpdateDestroyAPIView):
     def get(self, request, *args, **kwargs):
         instance = self.get_object()
         return Response(UserSerializer(instance).data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = AdminUserUpdateSerializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(instance).data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Impede auto-exclusão
+        if instance == request.user:
+            return Response(
+                {"detail": "Não é possível excluir o próprio usuário."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminPasswordResetView(APIView):

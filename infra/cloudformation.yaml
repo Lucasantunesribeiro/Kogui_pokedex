@@ -1,0 +1,276 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Kogui Pokédx - Infraestrutura AWS Free Tier
+  Frontend: S3 + CloudFront
+  Backend: Lambda + API Gateway HTTP API
+  Database: RDS PostgreSQL t3.micro (Free Tier)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: kogui-pokedex
+  DjangoSecretKey:
+    Type: String
+    NoEcho: true
+    Description: Django SECRET_KEY para producao
+  DbPassword:
+    Type: String
+    NoEcho: true
+    Description: Senha do banco de dados PostgreSQL
+  LambdaS3Bucket:
+    Type: String
+    Description: S3 bucket onde o pacote Lambda foi carregado
+  LambdaS3Key:
+    Type: String
+    Default: kogui-backend.zip
+    Description: Chave S3 do pacote Lambda
+
+# ====================================================================
+# RECURSOS
+# ====================================================================
+Resources:
+
+  # ------------------------------------------------------------------
+  # IAM - Role para o Lambda
+  # ------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaSSMPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ProjectName}/*'
+
+  # ------------------------------------------------------------------
+  # S3 - Bucket para frontend (Angular build)
+  # ------------------------------------------------------------------
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-frontend-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # ------------------------------------------------------------------
+  # CloudFront - OAC + Distribution para o frontend
+  # ------------------------------------------------------------------
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub '${ProjectName} Frontend'
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+        DefaultCacheBehavior:
+          ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: S3Origin
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        # SPA: fallback para index.html em rotas Angular
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100  # apenas NA e Europa - mais barato
+
+  # ------------------------------------------------------------------
+  # RDS - PostgreSQL t3.micro (Free Tier)
+  # ------------------------------------------------------------------
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-db-sg'
+      GroupDescription: Permite acesso PostgreSQL apenas do Lambda
+      VpcId: vpc-07fb3af5064762a53
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0  # Lambda fora de VPC conecta via internet publico
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Kogui RDS
+      SubnetIds:
+        - subnet-04c6ca9eca1dd2d5c
+        - subnet-0ba95c2716cfd99d9
+        - subnet-07320966143e02d45
+
+  KoguiDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-db'
+      DBInstanceClass: db.t3.micro          # Free Tier
+      Engine: postgres
+      EngineVersion: '15.12'
+      AllocatedStorage: '20'               # 20GB Free Tier
+      StorageType: gp2
+      DBName: kogui
+      MasterUsername: kogui
+      MasterUserPassword: !Ref DbPassword
+      PubliclyAccessible: true             # necessário para Lambda fora de VPC
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+      BackupRetentionPeriod: 0
+      MultiAZ: false
+      StorageEncrypted: true
+
+  # ------------------------------------------------------------------
+  # Lambda - Função Django (Mangum)
+  # ------------------------------------------------------------------
+  DjangoLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-api'
+      Runtime: python3.12
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          DJANGO_SETTINGS_MODULE: kogui_pokedex.settings
+          DJANGO_DEBUG: 'false'
+          DJANGO_SECRET_KEY: !Ref DjangoSecretKey
+          DJANGO_ALLOWED_HOSTS: !Sub '.execute-api.${AWS::Region}.amazonaws.com,.cloudfront.net,localhost,127.0.0.1'
+          DB_ENGINE: postgresql
+          DB_HOST: !GetAtt KoguiDatabase.Endpoint.Address
+          DB_PORT: '5432'
+          DB_NAME: kogui
+          DB_USER: kogui
+          DB_PASSWORD: !Ref DbPassword
+          CORS_ALLOWED_ORIGINS: !Sub 'https://${CloudFrontDistribution.DomainName}'
+
+  LambdaFunctionUrl:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DjangoLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*'
+
+  # ------------------------------------------------------------------
+  # API Gateway - HTTP API (mais barato que REST API)
+  # ------------------------------------------------------------------
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${ProjectName}-api-gw'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Sub 'https://${CloudFrontDistribution.DomainName}'
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Requested-With
+        AllowCredentials: true
+        MaxAge: 86400
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt DjangoLambdaFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  HttpApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${HttpApiIntegration}'
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+# ====================================================================
+# OUTPUTS
+# ====================================================================
+Outputs:
+  CloudFrontURL:
+    Description: URL do Frontend (CloudFront)
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${ProjectName}-frontend-url'
+
+  ApiGatewayURL:
+    Description: URL do Backend (API Gateway)
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub '${ProjectName}-api-url'
+
+  FrontendBucketName:
+    Description: Nome do bucket S3 do frontend
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${ProjectName}-frontend-bucket'
+
+  DatabaseEndpoint:
+    Description: Endpoint do banco de dados RDS
+    Value: !GetAtt KoguiDatabase.Endpoint.Address
+    Export:
+      Name: !Sub '${ProjectName}-db-endpoint'

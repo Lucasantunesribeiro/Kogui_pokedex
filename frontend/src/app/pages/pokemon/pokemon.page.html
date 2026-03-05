@@ -1,4 +1,4 @@
-<!-- Seção de filtros por TIPO (somente tipos, sem geração) -->
+<!-- Filtros por tipo (server-side) -->
 <section class="filters">
   <div class="filters__container">
     <h2 class="filters__title">Pokémon Descobertos</h2>
@@ -25,30 +25,36 @@
 
         <div class="pokemon-card__top-right">
           <div class="pokemon-types">
-            <span class="type-badge"
-                  *ngFor="let type of p.types"
-                  [style.background-color]="getTypeColor(type)">
+            <span
+              class="type-badge"
+              *ngFor="let type of p.types"
+              [style.background-color]="getTypeColor(type)"
+            >
               {{ type }}
             </span>
           </div>
 
           <!-- Favoritos -->
-          <button class="icon-btn"
-                  [class.icon-btn--active]="favoriteMap().has(p.id)"
-                  [attr.aria-pressed]="favoriteMap().has(p.id)"
-                  (click)="toggleFavorite(p)"
-                  title="Favoritar">
-            <span *ngIf="!favoriteMap().has(p.id)">♡</span>
-            <span *ngIf="favoriteMap().has(p.id)">♥</span>
+          <button
+            class="icon-btn"
+            [class.icon-btn--active]="favoriteMap().has(p.id)"
+            [attr.aria-pressed]="favoriteMap().has(p.id)"
+            (click)="toggleFavorite(p)"
+            title="Favoritar"
+          >
+            <span *ngIf="!favoriteMap().has(p.id)">&#9825;</span>
+            <span *ngIf="favoriteMap().has(p.id)">&#9829;</span>
           </button>
 
           <!-- Equipe -->
-          <button class="icon-btn sword"
-                  [class.icon-btn--active]="isInTeam(p.id)"
-                  [attr.aria-pressed]="isInTeam(p.id)"
-                  (click)="toggleTeam(p)"
-                  title="Adicionar à equipe (máx. 6)">
-            ⚔
+          <button
+            class="icon-btn sword"
+            [class.icon-btn--active]="isInTeam(p.id)"
+            [attr.aria-pressed]="isInTeam(p.id)"
+            (click)="toggleTeam(p)"
+            title="Adicionar à equipe (máx. 6)"
+          >
+            &#9876;
           </button>
         </div>
       </header>
@@ -77,5 +83,17 @@
         </li>
       </ul>
     </article>
+  </div>
+
+  <!-- Loading indicator -->
+  <div class="load-more" *ngIf="isLoading()">
+    <span class="loading-text">Carregando Pokémon...</span>
+  </div>
+
+  <!-- Botão carregar mais -->
+  <div class="load-more" *ngIf="!isLoading() && hasMore()">
+    <button class="load-more__btn" (click)="loadMore()">
+      Carregar mais
+    </button>
   </div>
 </main>

@@ -46,22 +46,15 @@ export class AdminUsersPageComponent {
 
   load(): void {
     this.loading.set(true);
-    console.log('[AdminUsers] Carregando usuários...');
     this.auth.listUsers().subscribe({
       next: (data: UserProfile[]) => {
-        console.log('[AdminUsers] Resposta recebida:', data);
-        const users = Array.isArray(data) ? data : [];
-        console.log('[AdminUsers] Usuários processados:', users);
-        this.users.set([...users]);
+        this.users.set(Array.isArray(data) ? [...data] : []);
       },
-      error: (err: any) => {
-        console.error('[AdminUsers] Erro ao carregar usuários:', err);
-        console.error('[AdminUsers] Status:', err?.status);
-        console.error('[AdminUsers] Mensagem:', err?.error);
+      error: () => {
         this.feedback.notifyError('Falha ao carregar usuários.');
+        this.loading.set(false);
       },
       complete: () => {
-        console.log('[AdminUsers] Requisição concluída');
         this.loading.set(false);
       },
     });

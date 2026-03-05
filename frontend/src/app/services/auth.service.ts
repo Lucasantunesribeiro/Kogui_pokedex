@@ -1,11 +1,17 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map, switchMap, tap, throwError, catchError, Observable } from 'rxjs';
+import { Observable, catchError, map, switchMap, tap, throwError } from 'rxjs';
 import { environment as env } from '../../environments/environment';
 
 interface TokenResponse {
   access: string;
   refresh?: string;
+}
+
+interface StoredSession {
+  access: string;
+  refresh?: string;
+  user?: UserProfile;
 }
 
 export interface UserProfile {
@@ -19,7 +25,8 @@ export interface UserProfile {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly storageKey = 'kogui-auth';
+  // BUG-01 corrigido: chave alinhada com o que o E2E test espera
+  private readonly storageKey = 'kogui.auth';
 
   private accessTokenSig = signal<string | null>(null);
   private refreshTokenSig = signal<string | null>(null);
@@ -30,35 +37,30 @@ export class AuthService {
   readonly isAdmin = computed(() => this.profileSig()?.is_staff ?? false);
 
   constructor() {
-    // restaura sessão de forma síncrona (antes do primeiro HTTP do app)
+    // Restaura sessão sincronamente, incluindo o perfil do usuário
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (raw) {
-        const parsed = JSON.parse(raw) as TokenResponse;
+        const parsed = JSON.parse(raw) as StoredSession;
         if (parsed.access) this.accessTokenSig.set(parsed.access);
         if (parsed.refresh) this.refreshTokenSig.set(parsed.refresh);
+        // BUG-02 corrigido: restaura o perfil salvo para evitar flash de "não logado"
+        if (parsed.user) this.profileSig.set(parsed.user);
 
-        // Tenta buscar perfil; se falhar com 401, o interceptor tentará refresh automaticamente
-        // Só limpamos os tokens se não houver refresh token ou se o refresh falhar
+        // Valida o token contra o servidor em background
         this.fetchCurrentUser().subscribe({
           error: (err) => {
-            // Se for 401, deixamos o interceptor tentar refresh
             if (err?.status === 401 && this.refreshTokenSig()) {
               return; // interceptor vai tentar refresh
             }
-            // Se for 403, é possível que o perfil seja inacessível mas sessão válida
             if (err?.status === 403) {
-              console.warn('[Auth] Sem permissão para buscar perfil, mas sessão mantida');
-              return;
+              return; // sessão válida, sem permissão de perfil
             }
-            // Para outros erros ou se não há refresh token, deslogamos
-            console.warn('[Auth] Sessão inválida ao restaurar:', err?.status);
             this.clearTokens();
           }
         });
       }
-    } catch (e) {
-      console.error('[Auth] Erro ao restaurar sessão:', e);
+    } catch {
       this.clearTokens();
     }
   }
@@ -88,6 +90,8 @@ export class AuthService {
       .pipe(
         tap((tokens) => this.persistTokens(tokens)),
         switchMap(() => this.fetchCurrentUser()),
+        // BUG-02 corrigido: persiste sessão completa (com user) após buscar perfil
+        tap(() => this.persistSession()),
         map(() => void 0),
         catchError((err) => {
           this.clearTokens();
@@ -116,23 +120,36 @@ export class AuthService {
       .pipe(map(() => void 0));
   }
 
-  /** Reset administrativo (sem e-mail) — usado na tela de Admin */
-  adminResetPassword(userId: number, payload: { new_password: string; new_password_confirm: string }): Observable<void> {
-    return this.http.post<{ detail: string }>(`${env.apiBase}/auth/users/${userId}/reset-password/`, payload)
+  adminResetPassword(
+    userId: number,
+    payload: { new_password: string; new_password_confirm: string }
+  ): Observable<void> {
+    return this.http
+      .post<{ detail: string }>(`${env.apiBase}/auth/users/${userId}/reset-password/`, payload)
       .pipe(map(() => void 0));
   }
 
   // ===== GESTÃO DE USUÁRIOS (ADMIN) =====
   listUsers(): Observable<UserProfile[]> {
-    return this.http.get<{ count: number; results: UserProfile[] }>(`${env.apiBase}/auth/users/`)
-      .pipe(map((response) => response.results || []));
+    return this.http
+      .get<{ count: number; results: UserProfile[] }>(`${env.apiBase}/auth/users/`)
+      .pipe(map((response) => response.results ?? []));
   }
 
-  createUser(payload: { username: string; email?: string; password: string; password_confirm?: string; is_staff?: boolean }): Observable<UserProfile> {
+  createUser(payload: {
+    username: string;
+    email?: string;
+    password: string;
+    password_confirm?: string;
+    is_staff?: boolean;
+  }): Observable<UserProfile> {
     return this.http.post<UserProfile>(`${env.apiBase}/auth/users/`, payload);
   }
 
-  updateUser(userId: number, payload: { username?: string; email?: string; is_staff?: boolean }): Observable<UserProfile> {
+  updateUser(
+    userId: number,
+    payload: { username?: string; email?: string; is_staff?: boolean }
+  ): Observable<UserProfile> {
     return this.http.patch<UserProfile>(`${env.apiBase}/auth/users/${userId}/`, payload);
   }
 
@@ -145,15 +162,8 @@ export class AuthService {
   getCurrentUser(): UserProfile | null { return this.profileSig(); }
   isAdminUser(): boolean { return this.isAdmin(); }
 
-  /** Getter usado pelo interceptor */
-  getAccessToken(): string | null {
-    return this.accessTokenSig();
-  }
-
-  /** Exposto caso precise em algum ponto do app */
-  getRefreshToken(): string | null {
-    return this.refreshTokenSig();
-  }
+  getAccessToken(): string | null { return this.accessTokenSig(); }
+  getRefreshToken(): string | null { return this.refreshTokenSig(); }
 
   refreshAccessToken(): Observable<TokenResponse> {
     const refresh = this.refreshTokenSig();
@@ -172,12 +182,19 @@ export class AuthService {
     }
     this.accessTokenSig.set(tokens.access);
     if (tokens.refresh) this.refreshTokenSig.set(tokens.refresh);
+    this.persistSession();
+  }
 
-    const payloadToStore: TokenResponse = {
-      access: this.accessTokenSig()!,
-      ...(this.refreshTokenSig() ? { refresh: this.refreshTokenSig()! } : {}),
-    };
-    localStorage.setItem(this.storageKey, JSON.stringify(payloadToStore));
+  /** Persiste o estado completo da sessão (tokens + perfil) no localStorage. */
+  private persistSession(): void {
+    const access = this.accessTokenSig();
+    if (!access) return;
+    const payload: StoredSession = { access };
+    const refresh = this.refreshTokenSig();
+    if (refresh) payload.refresh = refresh;
+    const user = this.profileSig();
+    if (user) payload.user = user;
+    localStorage.setItem(this.storageKey, JSON.stringify(payload));
   }
 
   private clearTokens(): void {
